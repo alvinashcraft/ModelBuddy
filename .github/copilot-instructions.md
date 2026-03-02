@@ -272,7 +272,7 @@ public partial class ModelListViewModel : ObservableObject
 
 ### Messaging
 
-Use `WeakReferenceMessenger` for loosely-coupled communication between ViewModels:
+Use `WeakReferenceMessenger` for loosely-coupled communication between ViewModels and for UI operations:
 
 ```csharp
 using CommunityToolkit.Mvvm.Messaging;
@@ -297,6 +297,87 @@ public partial class StatusViewModel : ObservableRecipient, IRecipient<ModelLoad
 
 // Sending — inject IMessenger and call Send
 _messenger.Send(new ModelLoadedMessage("phi-3.5-mini"));
+```
+
+### UI Operations via Messaging
+
+**ViewModels should never directly perform UI operations** like navigation, showing dialogs, or displaying notifications. Instead, use the messaging system to request these operations, and handle them in code-behind files where UI APIs are available.
+
+**Common UI operation messages:**
+
+```csharp
+// Navigation request
+public class NavigateToPageMessage : ValueChangedMessage<Type>
+{
+    public NavigateToPageMessage(Type pageType) : base(pageType) { }
+}
+
+// Dialog request with async response
+public class ShowConfirmDialogMessage : AsyncRequestMessage<bool>
+{
+    public string Title { get; }
+    public string Content { get; }
+    public ShowConfirmDialogMessage(string title, string content)
+    {
+        Title = title;
+        Content = content;
+    }
+}
+
+// Notification/InfoBar message
+public class ShowNotificationMessage
+{
+    public string Message { get; }
+    public InfoBarSeverity Severity { get; }
+    public ShowNotificationMessage(string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
+    {
+        Message = message;
+        Severity = severity;
+    }
+}
+```
+
+**Handle in code-behind (where XamlRoot and navigation are available):**
+
+```csharp
+public sealed partial class MainWindow : Window, IRecipient<ShowConfirmDialogMessage>
+{
+    public MainWindow()
+    {
+        InitializeComponent();
+        WeakReferenceMessenger.Default.Register(this);
+    }
+
+    public async void Receive(ShowConfirmDialogMessage message)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = message.Title,
+            Content = message.Content,
+            PrimaryButtonText = "Yes",
+            CloseButtonText = "No",
+            XamlRoot = Content.XamlRoot
+        };
+        var result = await dialog.ShowAsync();
+        message.Reply(result == ContentDialogResult.Primary);
+    }
+}
+```
+
+**Request from ViewModel:**
+
+```csharp
+// Fire-and-forget notification
+_messenger.Send(new ShowNotificationMessage("Model downloaded successfully"));
+
+// Async dialog with response
+var confirmed = await _messenger.Send(new ShowConfirmDialogMessage(
+    "Delete Model",
+    "Are you sure you want to delete this model?"));
+if (confirmed)
+{
+    await DeleteModelAsync();
+}
 ```
 
 ### Dependency Injection Setup
@@ -350,6 +431,10 @@ public sealed partial class ModelListPage : Page
 }
 ```
 
+### Event-to-Command Pattern
+
+Prefer using event-to-command patterns in XAML over code-behind event handlers when possible for better MVVM practice. In WinUI 3, where EventTriggerBehavior is not readily available, use minimal code-behind handlers that simply delegate to ViewModel commands (expression-body syntax preferred).
+
 ### Project Structure Convention
 
 ```
@@ -367,12 +452,47 @@ Follow **Fluent UI** design guidelines for Windows 11:
 
 - Use **Mica** (`<MicaBackdrop />`) on main windows and **Acrylic** only on transient/light-dismiss surfaces (flyouts, context menus).
 - Use the WinUI 3 control library (`Microsoft.UI.Xaml.Controls`) — prefer built-in controls (NavigationView, InfoBar, ContentDialog, TeachingTip) over custom implementations.
+- **Check the Windows Community Toolkit** for additional controls not available in core WinUI 3 (e.g., `MarkdownTextBlock`, `TokenizingTextBox`, `SettingsCard`, `Segmented`, etc.). See [Windows Community Toolkit Gallery](https://apps.microsoft.com/detail/9nblggh4tlcq) and [docs](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/windows/).
 - Support **light and dark mode** — use theme resources (`ApplicationTheme`) instead of hardcoded colors.
 - Apply Windows 11 **rounded geometry** (default corner radius from WinUI) — don't override to sharp corners.
 - Use **Segoe UI Variable** (the WinUI default) and the built-in type ramp for hierarchy.
 
+### Windows Community Toolkit Controls
+
+The Windows Community Toolkit provides many useful controls for WinUI 3 apps. Always check the toolkit before building custom controls:
+
+```powershell
+# Add the toolkit controls package
+dotnet add package CommunityToolkit.WinUI.UI.Controls.Markdown
+dotnet add package CommunityToolkit.WinUI.Controls.SettingsControls
+dotnet add package CommunityToolkit.WinUI.Controls.Segmented
+```
+
+**Commonly Used Controls:**
+
+| Control | Package | Description |
+|---------|---------|-------------|
+| `MarkdownTextBlock` | `CommunityToolkit.WinUI.UI.Controls.Markdown` | Renders markdown content |
+| `SettingsCard` | `CommunityToolkit.WinUI.Controls.SettingsControls` | Settings page cards |
+| `SettingsExpander` | `CommunityToolkit.WinUI.Controls.SettingsControls` | Expandable settings groups |
+| `Segmented` | `CommunityToolkit.WinUI.Controls.Segmented` | Segmented button control |
+| `TokenizingTextBox` | `CommunityToolkit.WinUI.Controls.TokenizingTextBox` | Tag/token input |
+
+**Usage Example (MarkdownTextBlock):**
+
+```xml
+<Page
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls">
+
+    <controls:MarkdownTextBlock 
+        Text="{x:Bind ViewModel.MarkdownContent, Mode=OneWay}"
+        Background="Transparent"/>
+</Page>
+```
+
 References:
 - [Fluent UI](https://developer.microsoft.com/en-us/fluentui#/)
+- [Windows Community Toolkit](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/windows/)
 - [Windows design principles](https://learn.microsoft.com/en-us/windows/apps/design/design-principles)
 - [Windows app design guidance](https://learn.microsoft.com/en-us/windows/apps/design/)
 - [Materials (Mica, Acrylic, Smoke)](https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/materials)

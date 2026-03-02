@@ -64,6 +64,7 @@ public partial class App : Application
 
         // ViewModels
         services.AddTransient<ModelsViewModel>();
+        services.AddTransient<ChatViewModel>();
         services.AddTransient<LogsViewModel>();
 
         return services.BuildServiceProvider();

@@ -389,6 +389,90 @@ public partial class FoundryService : IFoundryService
     }
 
     /// <inheritdoc />
+    public async IAsyncEnumerable<string> ChatCompletionStreamAsync(
+        string modelId,
+        IReadOnlyList<ChatMessage> messages,
+        string? systemPrompt = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (_cachedEndpoint is null)
+        {
+            throw new InvalidOperationException("Foundry Local is not connected.");
+        }
+
+        // Build messages array for API
+        var apiMessages = new List<object>();
+
+        // Add system prompt if provided
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            apiMessages.Add(new { role = "system", content = systemPrompt });
+        }
+
+        // Add conversation messages
+        foreach (var msg in messages)
+        {
+            apiMessages.Add(new { role = msg.Role.ToLowerInvariant(), content = msg.Content });
+        }
+
+        var requestBody = new
+        {
+            model = modelId,
+            messages = apiMessages,
+            stream = true
+        };
+
+        var jsonBody = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_cachedEndpoint}/v1/chat/completions")
+        {
+            Content = content
+        };
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Chat completion failed: HTTP {response.StatusCode} — {errBody}");
+        }
+
+        // Parse SSE stream
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var line = await reader.ReadLineAsync(cancellationToken);
+            if (line is null) break;
+
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (!line.StartsWith("data: ")) continue;
+
+            var data = line[6..]; // Remove "data: " prefix
+            if (data == "[DONE]") break;
+
+            // Parse the JSON chunk
+            using var doc = JsonDocument.Parse(data);
+            if (doc.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
+            {
+                var choice = choices[0];
+                if (choice.TryGetProperty("delta", out var delta) &&
+                    delta.TryGetProperty("content", out var contentProp))
+                {
+                    var chunk = contentProp.GetString();
+                    if (!string.IsNullOrEmpty(chunk))
+                    {
+                        yield return chunk;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public long GetTotalSystemRam()
     {
         try

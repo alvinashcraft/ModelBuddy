@@ -27,18 +27,14 @@ public sealed partial class LogsPage : Page
         InitializeComponent();
     }
 
-    private void Page_Loaded(object sender, RoutedEventArgs e)
-    {
+    private void Page_Loaded(object sender, RoutedEventArgs e) =>
         ViewModel.LoadLogsCommand.Execute(null);
-    }
 
     /// <summary>
     /// Formats a timestamp for display.
     /// </summary>
-    public static string FormatTimestamp(DateTime timestamp)
-    {
-        return timestamp.ToString("HH:mm:ss.fff");
-    }
+    public static string FormatTimestamp(DateTime timestamp) =>
+        timestamp.ToString("HH:mm:ss.fff");
 
     /// <summary>
     /// Gets a brush color based on log level.

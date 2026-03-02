@@ -24,18 +24,14 @@ public sealed partial class ModelsPage : Page
         InitializeComponent();
     }
 
-    private async void Page_Loaded(object sender, RoutedEventArgs e)
-    {
-        await ViewModel.InitializeCommand.ExecuteAsync(null);
-    }
+    private void Page_Loaded(object sender, RoutedEventArgs e) =>
+        ViewModel.InitializeCommand.Execute(null);
 
     /// <summary>
     /// Helper method to invert a boolean for visibility binding.
     /// </summary>
     /// <param name="value">The boolean value to invert.</param>
     /// <returns>The inverted visibility.</returns>
-    public static Visibility InvertBool(bool value)
-    {
-        return value ? Visibility.Collapsed : Visibility.Visible;
-    }
+    public static Visibility InvertBool(bool value) =>
+        value ? Visibility.Collapsed : Visibility.Visible;
 }

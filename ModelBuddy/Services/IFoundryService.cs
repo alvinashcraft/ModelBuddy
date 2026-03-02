@@ -91,6 +91,20 @@ public interface IFoundryService
     Task DeleteModelAsync(string modelId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a chat completion request and streams the response.
+    /// </summary>
+    /// <param name="modelId">The model ID to use for completion.</param>
+    /// <param name="messages">The chat messages.</param>
+    /// <param name="systemPrompt">The system prompt.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>An async enumerable of response chunks.</returns>
+    IAsyncEnumerable<string> ChatCompletionStreamAsync(
+        string modelId,
+        IReadOnlyList<ChatMessage> messages,
+        string? systemPrompt = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the total system RAM in bytes.
     /// </summary>
     /// <returns>The total system RAM in bytes.</returns>
