@@ -52,10 +52,19 @@ public partial class App : Application
         services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
 
         // Services
+        services.AddSingleton<ILogStore, InMemoryLogStore>();
         services.AddSingleton<IFoundryService, FoundryService>();
+
+        // Add logging to in-memory store
+        services.AddLogging(builder =>
+        {
+            var logStore = services.BuildServiceProvider().GetRequiredService<ILogStore>();
+            builder.AddLogStore(logStore);
+        });
 
         // ViewModels
         services.AddTransient<ModelsViewModel>();
+        services.AddTransient<LogsViewModel>();
 
         return services.BuildServiceProvider();
     }
