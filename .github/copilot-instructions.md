@@ -380,6 +380,80 @@ if (confirmed)
 }
 ```
 
+### Dispatcher Service for UI Thread Access
+
+When ViewModels need to update UI-bound collections from background threads (e.g., event handlers), use the `IDispatcherService` abstraction instead of directly accessing `DispatcherQueue`:
+
+```csharp
+// Interface in Services/IDispatcherService.cs
+public interface IDispatcherService
+{
+    bool TryEnqueue(Action action);
+    bool HasThreadAccess { get; }
+}
+
+// Implementation in Services/DispatcherService.cs
+public sealed class DispatcherService : IDispatcherService
+{
+    private readonly DispatcherQueue _dispatcherQueue;
+
+    public DispatcherService(DispatcherQueue dispatcherQueue)
+    {
+        _dispatcherQueue = dispatcherQueue;
+    }
+
+    public bool HasThreadAccess => _dispatcherQueue.HasThreadAccess;
+
+    public bool TryEnqueue(Action action) => _dispatcherQueue.TryEnqueue(() => action());
+}
+```
+
+**Register in App.xaml.cs** (capture DispatcherQueue on UI thread):
+
+```csharp
+public App()
+{
+    var dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+    Services = ConfigureServices(dispatcherQueue);
+    InitializeComponent();
+}
+
+private static IServiceProvider ConfigureServices(DispatcherQueue dispatcherQueue)
+{
+    var services = new ServiceCollection();
+    services.AddSingleton<IDispatcherService>(new DispatcherService(dispatcherQueue));
+    // ... other registrations
+}
+```
+
+**Use in ViewModels:**
+
+```csharp
+public partial class LogsViewModel : ObservableObject
+{
+    private readonly IDispatcherService _dispatcherService;
+
+    public LogsViewModel(ILogStore logStore, IDispatcherService dispatcherService)
+    {
+        _dispatcherService = dispatcherService;
+        logStore.LogAdded += OnLogAdded;
+    }
+
+    private void OnLogAdded(object? sender, LogEntry entry)
+    {
+        _dispatcherService.TryEnqueue(() =>
+        {
+            Logs.Insert(0, entry);
+        });
+    }
+}
+```
+
+This pattern:
+- Keeps ViewModels testable (mock `IDispatcherService` in tests)
+- Avoids direct dependency on WinUI-specific `DispatcherQueue` API
+- Follows the same DI pattern used for other services
+
 ### Dependency Injection Setup
 
 Configure the DI container in `App.xaml.cs`:

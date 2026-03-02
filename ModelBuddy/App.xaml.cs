@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using ModelBuddy.Services;
 using ModelBuddy.ViewModels;
@@ -24,7 +25,9 @@ public partial class App : Application
     /// </summary>
     public App()
     {
-        Services = ConfigureServices();
+        // Capture the UI thread's DispatcherQueue before configuring services
+        var dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        Services = ConfigureServices(dispatcherQueue);
         InitializeComponent();
     }
 
@@ -38,7 +41,7 @@ public partial class App : Application
         _window.Activate();
     }
 
-    private static IServiceProvider ConfigureServices()
+    private static IServiceProvider ConfigureServices(DispatcherQueue dispatcherQueue)
     {
         var services = new ServiceCollection();
 
@@ -52,6 +55,7 @@ public partial class App : Application
         services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
 
         // Services
+        services.AddSingleton<IDispatcherService>(new DispatcherService(dispatcherQueue));
         services.AddSingleton<ILogStore, InMemoryLogStore>();
         services.AddSingleton<IFoundryService, FoundryService>();
 

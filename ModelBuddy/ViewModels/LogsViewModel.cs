@@ -12,15 +12,18 @@ namespace ModelBuddy.ViewModels;
 public partial class LogsViewModel : ObservableObject
 {
     private readonly ILogStore _logStore;
+    private readonly IDispatcherService _dispatcherService;
     private IReadOnlyList<LogEntry> _allLogs = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LogsViewModel"/> class.
     /// </summary>
     /// <param name="logStore">The log store service.</param>
-    public LogsViewModel(ILogStore logStore)
+    /// <param name="dispatcherService">The dispatcher service for UI thread access.</param>
+    public LogsViewModel(ILogStore logStore, IDispatcherService dispatcherService)
     {
         _logStore = logStore;
+        _dispatcherService = dispatcherService;
         _logStore.LogAdded += OnLogAdded;
     }
 
@@ -124,7 +127,7 @@ public partial class LogsViewModel : ObservableObject
     private void OnLogAdded(object? sender, LogEntry entry)
     {
         // Update on UI thread
-        Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()?.TryEnqueue(() =>
+        _dispatcherService.TryEnqueue(() =>
         {
             _allLogs = _logStore.GetAll();
             TotalLogCount = _allLogs.Count;
