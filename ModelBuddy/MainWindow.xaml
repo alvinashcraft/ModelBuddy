@@ -26,7 +26,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="12" Margin="16,0,0,0" VerticalAlignment="Center">
-                <Image Source="/Assets/Square44x44Logo.scale-200.png" Width="20" Height="20"/>
+                <Image Source="/Assets/ModelBuddy32.png" Width="20" Height="20"/>
                 <TextBlock Text="ModelBuddy" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
