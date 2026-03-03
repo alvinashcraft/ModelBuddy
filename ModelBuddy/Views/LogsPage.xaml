@@ -14,22 +14,26 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
             <FontIcon Glyph="&#xE7BA;" FontSize="28"/>
             <TextBlock Text="Logs" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center"/>
-            <TextBlock Text="{x:Bind ViewModel.TotalLogCount, Mode=OneWay}" 
-                       Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       VerticalAlignment="Center"/>
-            <TextBlock Text="entries" 
-                       Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       VerticalAlignment="Center"/>
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                    CornerRadius="10" 
+                    Padding="8,2" 
+                    VerticalAlignment="Center"
+                    Margin="4,0,0,0">
+                <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                    <Run Text="{x:Bind ViewModel.TotalLogCount, Mode=OneWay}"/>
+                    <Run Text="entries"/>
+                </TextBlock>
+            </Border>
         </StackPanel>
 
         <!-- Toolbar -->
@@ -39,69 +43,134 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBox 
                     x:Name="SearchBox"
                     PlaceholderText="Search logs..."
                     Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Width="300"/>
+                    Width="220"
+                    VerticalAlignment="Center"/>
+                <ComboBox 
+                    x:Name="SourceTypeFilter"
+                    ItemsSource="{x:Bind ViewModel.SourceTypes}"
+                    SelectedItem="{x:Bind ViewModel.SelectedSourceType, Mode=TwoWay}"
+                    Width="140"
+                    VerticalAlignment="Center"/>
                 <ComboBox 
                     x:Name="LogLevelFilter"
-                    Header="Minimum Level"
                     ItemsSource="{x:Bind ViewModel.LogLevels}"
                     SelectedItem="{x:Bind ViewModel.SelectedLogLevel, Mode=TwoWay}"
-                    Width="150"/>
+                    Width="140"
+                    VerticalAlignment="Center"/>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Command="{x:Bind ViewModel.RefreshLogsCommand}" ToolTipService.ToolTip="Refresh">
-                    <FontIcon Glyph="&#xE72C;" FontSize="16"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button 
+                    Command="{x:Bind ViewModel.LoadAllLogsCommand}" 
+                    ToolTipService.ToolTip="Load logs from all sources (App, Foundry, Windows Events)"
+                    Padding="12,8">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE896;" FontSize="14"/>
+                        <TextBlock Text="Load All" FontSize="13"/>
+                    </StackPanel>
                 </Button>
-                <Button Command="{x:Bind ViewModel.ClearLogsCommand}" ToolTipService.ToolTip="Clear Logs">
-                    <FontIcon Glyph="&#xE74D;" FontSize="16"/>
+                <Button Command="{x:Bind ViewModel.RefreshLogsCommand}" 
+                        ToolTipService.ToolTip="Refresh"
+                        Padding="10,8">
+                    <FontIcon Glyph="&#xE72C;" FontSize="14"/>
+                </Button>
+                <Button Command="{x:Bind ViewModel.ClearLogsCommand}" 
+                        ToolTipService.ToolTip="Clear all logs"
+                        Padding="10,8">
+                    <FontIcon Glyph="&#xE74D;" FontSize="14"/>
                 </Button>
             </StackPanel>
+        </Grid>
+
+        <!-- Loading indicator for external logs -->
+        <ProgressBar 
+            Grid.Row="1" 
+            VerticalAlignment="Bottom"
+            Margin="0,4,0,-8"
+            IsIndeterminate="{x:Bind ViewModel.IsLoadingExternalLogs, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.IsLoadingExternalLogs, Mode=OneWay}"/>
+
+        <!-- Column Headers -->
+        <Grid Grid.Row="2" 
+              Padding="12,8" 
+              Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              CornerRadius="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="70"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Time" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <TextBlock Grid.Column="1" Text="Level" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <TextBlock Grid.Column="2" Text="Type" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <TextBlock Grid.Column="3" Text="Source" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <TextBlock Grid.Column="4" Text="Message" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </Grid>
 
         <!-- Logs List -->
         <ListView 
             x:Name="LogsList"
-            Grid.Row="2"
+            Grid.Row="3"
             ItemsSource="{x:Bind ViewModel.Logs, Mode=OneWay}"
-            SelectionMode="Single">
+            SelectionMode="Single"
+            Padding="0">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="MinHeight" Value="36"/>
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="models:LogEntry">
-                    <Grid Padding="8,12" ColumnSpacing="12">
+                    <Grid Padding="12,6" ColumnSpacing="0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
                             <ColumnDefinition Width="100"/>
-                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="70"/>
+                            <ColumnDefinition Width="200"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock 
                             Grid.Column="0" 
                             Text="{x:Bind local:LogsPage.FormatTimestamp(Timestamp)}" 
-                            Style="{StaticResource CaptionTextBlockStyle}" 
+                            FontSize="12"
+                            FontFamily="Consolas"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
                             VerticalAlignment="Center"/>
                         <Border 
                             Grid.Column="1" 
-                            CornerRadius="4" 
+                            CornerRadius="3" 
                             Padding="6,2" 
                             HorizontalAlignment="Left" 
+                            VerticalAlignment="Center"
                             Background="{x:Bind local:LogsPage.GetLevelBrush(Level)}">
-                            <TextBlock Text="{x:Bind Level}" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
+                            <TextBlock Text="{x:Bind local:LogsPage.FormatLevel(Level)}" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                         </Border>
                         <TextBlock 
                             Grid.Column="2" 
-                            Text="{x:Bind Source}" 
-                            Style="{StaticResource CaptionTextBlockStyle}" 
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
-                            TextTrimming="CharacterEllipsis" 
+                            Text="{x:Bind local:LogsPage.FormatSourceType(SourceType)}" 
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" 
                             VerticalAlignment="Center"/>
                         <TextBlock 
                             Grid.Column="3" 
+                            Text="{x:Bind Source}" 
+                            FontSize="12"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
+                            TextTrimming="CharacterEllipsis"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="{x:Bind Source}"/>
+                        <TextBlock 
+                            Grid.Column="4" 
                             Text="{x:Bind Message}" 
+                            FontSize="12"
                             TextWrapping="NoWrap" 
                             TextTrimming="CharacterEllipsis" 
                             VerticalAlignment="Center" 
@@ -113,13 +182,13 @@
 
         <!-- Empty state -->
         <StackPanel 
-            Grid.Row="2"
+            Grid.Row="3"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Spacing="12"
             Visibility="{x:Bind local:LogsPage.IsEmpty(ViewModel.Logs.Count), Mode=OneWay}">
             <FontIcon Glyph="&#xE7BA;" FontSize="48" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-            <TextBlock 
+            <TextBlock
                 Text="No logs to display" 
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
@@ -131,7 +200,7 @@
 
         <!-- Status Bar -->
         <Border 
-            Grid.Row="3" 
+            Grid.Row="4" 
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
             CornerRadius="4"
             Padding="12,8">

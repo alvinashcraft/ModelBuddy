@@ -13,6 +13,8 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Suppress MVVM Toolkit AOT warning for [ObservableProperty] fields - not using AOT compilation -->
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Views\ChatPage.xaml" />
@@ -60,6 +62,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Views\LogsPage.xaml">

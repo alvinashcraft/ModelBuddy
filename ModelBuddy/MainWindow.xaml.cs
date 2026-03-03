@@ -16,6 +16,7 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
 
         // Navigate to Models page by default
         ContentFrame.Navigate(typeof(ModelsPage));

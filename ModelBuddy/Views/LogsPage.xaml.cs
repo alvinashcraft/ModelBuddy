@@ -37,6 +37,33 @@ public sealed partial class LogsPage : Page
         timestamp.ToString("HH:mm:ss.fff");
 
     /// <summary>
+    /// Formats a log level for display (abbreviated).
+    /// </summary>
+    public static string FormatLevel(LogLevel level) =>
+        level switch
+        {
+            LogLevel.Trace => "TRC",
+            LogLevel.Debug => "DBG",
+            LogLevel.Information => "INF",
+            LogLevel.Warning => "WRN",
+            LogLevel.Error => "ERR",
+            LogLevel.Critical => "CRT",
+            _ => level.ToString()[..3].ToUpperInvariant()
+        };
+
+    /// <summary>
+    /// Formats a log source type for display.
+    /// </summary>
+    public static string FormatSourceType(LogSourceType sourceType) =>
+        sourceType switch
+        {
+            LogSourceType.Application => "App",
+            LogSourceType.FoundryLocal => "Foundry",
+            LogSourceType.WindowsEvent => "Windows",
+            _ => sourceType.ToString()
+        };
+
+    /// <summary>
     /// Gets a brush color based on log level.
     /// </summary>
     public static SolidColorBrush GetLevelBrush(LogLevel level)

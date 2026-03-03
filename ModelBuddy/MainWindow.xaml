@@ -14,11 +14,31 @@
     </Window.SystemBackdrop>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom Title Bar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" VerticalAlignment="Top" Height="48">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="16,0,0,0" VerticalAlignment="Center">
+                <Image Source="/Assets/Square44x44Logo.scale-200.png" Width="20" Height="20"/>
+                <TextBlock Text="ModelBuddy" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content -->
         <NavigationView
             x:Name="NavView"
+            Grid.Row="1"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="True"
             PaneDisplayMode="Left"
+            IsPaneToggleButtonVisible="True"
             SelectionChanged="NavView_SelectionChanged">
 
             <NavigationView.MenuItems>
@@ -38,26 +58,6 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-
-            <NavigationView.HeaderTemplate>
-                <DataTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="/Assets/StoreLogo.png" Width="24" Height="24"/>
-                        <TextBlock Text="ModelBuddy" Style="{StaticResource TitleTextBlockStyle}"/>
-                        <Border 
-                            x:Name="ConnectionIndicator"
-                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
-                            CornerRadius="8"
-                            Padding="8,4"
-                            VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Ellipse Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}"/>
-                                <TextBlock Text="Foundry Local Connection" FontSize="12"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </DataTemplate>
-            </NavigationView.HeaderTemplate>
 
             <Frame x:Name="ContentFrame"/>
         </NavigationView>

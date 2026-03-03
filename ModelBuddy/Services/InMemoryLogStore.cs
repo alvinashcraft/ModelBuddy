@@ -15,6 +15,12 @@ public interface ILogStore
     void Add(LogEntry entry);
 
     /// <summary>
+    /// Adds multiple log entries to the store.
+    /// </summary>
+    /// <param name="entries">The log entries to add.</param>
+    void AddRange(IEnumerable<LogEntry> entries);
+
+    /// <summary>
     /// Gets all log entries.
     /// </summary>
     /// <returns>A read-only list of log entries.</returns>
@@ -26,6 +32,13 @@ public interface ILogStore
     /// <param name="minLevel">The minimum log level to include.</param>
     /// <returns>A read-only list of filtered log entries.</returns>
     IReadOnlyList<LogEntry> GetByLevel(Models.LogLevel minLevel);
+
+    /// <summary>
+    /// Gets log entries filtered by source type.
+    /// </summary>
+    /// <param name="sourceType">The source type to filter by. Use <see cref="LogSourceType.All"/> for all sources.</param>
+    /// <returns>A read-only list of filtered log entries.</returns>
+    IReadOnlyList<LogEntry> GetBySourceType(LogSourceType sourceType);
 
     /// <summary>
     /// Clears all log entries.
@@ -81,6 +94,31 @@ public class InMemoryLogStore : ILogStore
     public IReadOnlyList<LogEntry> GetByLevel(Models.LogLevel minLevel)
     {
         return _entries.Where(e => e.Level >= minLevel).ToList();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<LogEntry> GetBySourceType(LogSourceType sourceType)
+    {
+        if (sourceType == LogSourceType.All)
+        {
+            return GetAll();
+        }
+
+        return _entries.Where(e => e.SourceType == sourceType).ToList();
+    }
+
+    /// <inheritdoc />
+    public void AddRange(IEnumerable<LogEntry> entries)
+    {
+        foreach (var entry in entries)
+        {
+            _entries.Enqueue(entry);
+        }
+
+        // Trim if over capacity
+        while (_entries.Count > _maxEntries && _entries.TryDequeue(out _))
+        {
+        }
     }
 
     /// <inheritdoc />

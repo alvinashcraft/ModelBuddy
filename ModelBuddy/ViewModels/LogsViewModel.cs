@@ -13,6 +13,8 @@ public partial class LogsViewModel : ObservableObject
 {
     private readonly ILogStore _logStore;
     private readonly IDispatcherService _dispatcherService;
+    private readonly WindowsEventLogReader _windowsEventLogReader;
+    private readonly FoundryLogReader _foundryLogReader;
     private IReadOnlyList<LogEntry> _allLogs = [];
 
     /// <summary>
@@ -20,10 +22,18 @@ public partial class LogsViewModel : ObservableObject
     /// </summary>
     /// <param name="logStore">The log store service.</param>
     /// <param name="dispatcherService">The dispatcher service for UI thread access.</param>
-    public LogsViewModel(ILogStore logStore, IDispatcherService dispatcherService)
+    /// <param name="windowsEventLogReader">The Windows Event Log reader.</param>
+    /// <param name="foundryLogReader">The Foundry Local log reader.</param>
+    public LogsViewModel(
+        ILogStore logStore, 
+        IDispatcherService dispatcherService,
+        WindowsEventLogReader windowsEventLogReader,
+        FoundryLogReader foundryLogReader)
     {
         _logStore = logStore;
         _dispatcherService = dispatcherService;
+        _windowsEventLogReader = windowsEventLogReader;
+        _foundryLogReader = foundryLogReader;
         _logStore.LogAdded += OnLogAdded;
     }
 
@@ -45,6 +55,12 @@ public partial class LogsViewModel : ObservableObject
     private LogLevel _selectedLogLevel = LogLevel.Information;
 
     /// <summary>
+    /// Gets or sets the selected source type filter.
+    /// </summary>
+    [ObservableProperty]
+    private LogSourceType _selectedSourceType = LogSourceType.All;
+
+    /// <summary>
     /// Gets or sets whether auto-scroll is enabled.
     /// </summary>
     [ObservableProperty]
@@ -57,10 +73,20 @@ public partial class LogsViewModel : ObservableObject
     private int _totalLogCount;
 
     /// <summary>
+    /// Gets or sets whether external logs are being loaded.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLoadingExternalLogs;
+
+    /// <summary>
     /// Gets the available log levels for filtering.
     /// </summary>
     public LogLevel[] LogLevels { get; } = Enum.GetValues<LogLevel>();
 
+    /// <summary>
+    /// Gets the available log source types for filtering.
+    /// </summary>
+    public LogSourceType[] SourceTypes { get; } = Enum.GetValues<LogSourceType>();
 
     partial void OnSearchTextChanged(string? value)
     {
@@ -68,6 +94,11 @@ public partial class LogsViewModel : ObservableObject
     }
 
     partial void OnSelectedLogLevelChanged(LogLevel value)
+    {
+        FilterLogs();
+    }
+
+    partial void OnSelectedSourceTypeChanged(LogSourceType value)
     {
         FilterLogs();
     }
@@ -81,6 +112,35 @@ public partial class LogsViewModel : ObservableObject
         _allLogs = _logStore.GetAll();
         TotalLogCount = _allLogs.Count;
         FilterLogs();
+    }
+
+    /// <summary>
+    /// Loads logs from all sources including external sources.
+    /// </summary>
+    [RelayCommand]
+    private async Task LoadAllLogsAsync()
+    {
+        IsLoadingExternalLogs = true;
+
+        try
+        {
+            // Load external logs
+            var windowsLogs = await _windowsEventLogReader.ReadLogsAsync(100, DateTime.Now.AddHours(-24));
+            var foundryLogs = await _foundryLogReader.ReadLogsAsync(100, DateTime.Now.AddHours(-24));
+
+            // Add to store
+            _logStore.AddRange(windowsLogs);
+            _logStore.AddRange(foundryLogs);
+
+            // Refresh view
+            _allLogs = _logStore.GetAll();
+            TotalLogCount = _allLogs.Count;
+            FilterLogs();
+        }
+        finally
+        {
+            IsLoadingExternalLogs = false;
+        }
     }
 
     /// <summary>
@@ -110,6 +170,12 @@ public partial class LogsViewModel : ObservableObject
 
         var filtered = _allLogs.Where(e => e.Level >= SelectedLogLevel);
 
+        // Filter by source type
+        if (SelectedSourceType != LogSourceType.All)
+        {
+            filtered = filtered.Where(e => e.SourceType == SelectedSourceType);
+        }
+
         if (!string.IsNullOrWhiteSpace(SearchText))
         {
             filtered = filtered.Where(e =>
@@ -132,16 +198,16 @@ public partial class LogsViewModel : ObservableObject
             _allLogs = _logStore.GetAll();
             TotalLogCount = _allLogs.Count;
 
-            if (entry.Level >= SelectedLogLevel)
-            {
-                var matchesSearch = string.IsNullOrWhiteSpace(SearchText) ||
-                    entry.Message.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    entry.Source.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
+            // Check if entry matches current filters
+            var matchesLevel = entry.Level >= SelectedLogLevel;
+            var matchesSource = SelectedSourceType == LogSourceType.All || entry.SourceType == SelectedSourceType;
+            var matchesSearch = string.IsNullOrWhiteSpace(SearchText) ||
+                entry.Message.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                entry.Source.Contains(SearchText, StringComparison.OrdinalIgnoreCase);
 
-                if (matchesSearch)
-                {
-                    Logs.Insert(0, entry);
-                }
+            if (matchesLevel && matchesSource && matchesSearch)
+            {
+                Logs.Insert(0, entry);
             }
         });
     }

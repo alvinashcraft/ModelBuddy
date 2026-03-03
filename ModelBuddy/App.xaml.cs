@@ -59,6 +59,10 @@ public partial class App : Application
         services.AddSingleton<ILogStore, InMemoryLogStore>();
         services.AddSingleton<IFoundryService, FoundryService>();
 
+        // External log readers
+        services.AddSingleton<WindowsEventLogReader>();
+        services.AddSingleton<FoundryLogReader>();
+
         // Add logging to in-memory store
         services.AddLogging(builder =>
         {
