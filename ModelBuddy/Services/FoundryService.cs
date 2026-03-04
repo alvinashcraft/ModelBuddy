@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
@@ -14,12 +15,11 @@ namespace ModelBuddy.Services;
 /// </summary>
 public partial class FoundryService : IFoundryService
 {
-    private static readonly int[] PortsToScan = [5273, 5272, 5274, 5275, 5276];
+    private const string DefaultEndpoint = "http://127.0.0.1:5272";
     private readonly HttpClient _httpClient;
     private readonly ILogger<FoundryService>? _logger;
     private string? _cachedEndpoint;
     private List<JsonElement>? _catalogCache;
-    private bool _useSampleData;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FoundryService"/> class.
@@ -28,14 +28,13 @@ public partial class FoundryService : IFoundryService
     public FoundryService(ILogger<FoundryService>? logger = null)
     {
         _logger = logger;
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        // Disable proxy to ensure localhost requests aren't intercepted
+        var handler = new HttpClientHandler { UseProxy = false };
+        _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
     }
 
     /// <inheritdoc />
-    public bool IsConnected => _cachedEndpoint is not null || _useSampleData;
-
-    /// <inheritdoc />
-    public bool UsingSampleData => _useSampleData;
+    public bool IsConnected => _cachedEndpoint is not null;
 
     /// <inheritdoc />
     public Uri? Endpoint => _cachedEndpoint is not null ? new Uri(_cachedEndpoint) : null;
@@ -45,25 +44,28 @@ public partial class FoundryService : IFoundryService
     {
         try
         {
-            var endpoint = await DiscoverEndpointAsync(cancellationToken);
-            if (endpoint is not null)
+            // Detect the endpoint from 'foundry service status' (or use default)
+            var endpoint = await DetectEndpointAsync();
+            Debug.WriteLine($"FoundryService: detected endpoint {endpoint}");
+
+            // Verify the service is actually running
+            if (await IsServiceRunningAsync(endpoint, cancellationToken))
             {
                 _cachedEndpoint = endpoint;
-                _useSampleData = false;
                 _logger?.LogInformation("Connected to Foundry Local at {Endpoint}", endpoint);
+                Debug.WriteLine($"FoundryService: connected to {endpoint}");
                 return true;
             }
 
-            // Foundry Local not available - use sample data for UI development
-            _logger?.LogWarning("Foundry Local not found. Using sample data for UI development.");
-            _useSampleData = true;
-            return true;
+            _logger?.LogWarning("Foundry Local not responding at {Endpoint}", endpoint);
+            Debug.WriteLine($"FoundryService: service not responding at {endpoint}");
+            return false;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to initialize Foundry Local. Using sample data.");
-            _useSampleData = true;
-            return true;
+            _logger?.LogError(ex, "Failed to initialize Foundry Local.");
+            Debug.WriteLine($"FoundryService: InitializeAsync error {ex.Message}");
+            return false;
         }
     }
 
@@ -72,7 +74,6 @@ public partial class FoundryService : IFoundryService
     {
         _cachedEndpoint = null;
         _catalogCache = null;
-        _useSampleData = false;
         _logger?.LogInformation("Foundry Local endpoint cache cleared, re-discovering...");
         return await InitializeAsync(cancellationToken);
     }
@@ -80,11 +81,6 @@ public partial class FoundryService : IFoundryService
     /// <inheritdoc />
     public async Task<IReadOnlyList<LocalModel>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
     {
-        if (_useSampleData)
-        {
-            return GetSampleModels();
-        }
-
         if (_cachedEndpoint is null)
         {
             return [];
@@ -151,7 +147,7 @@ public partial class FoundryService : IFoundryService
     /// <inheritdoc />
     public async Task<IReadOnlyList<LocalModel>> GetCachedModelsAsync(CancellationToken cancellationToken = default)
     {
-        if (_useSampleData || _cachedEndpoint is null)
+        if (_cachedEndpoint is null)
         {
             return [];
         }
@@ -194,7 +190,7 @@ public partial class FoundryService : IFoundryService
     /// <inheritdoc />
     public async Task<IReadOnlyList<LocalModel>> GetLoadedModelsAsync(CancellationToken cancellationToken = default)
     {
-        if (_useSampleData || _cachedEndpoint is null)
+        if (_cachedEndpoint is null)
         {
             return [];
         }
@@ -489,30 +485,71 @@ public partial class FoundryService : IFoundryService
     [GeneratedRegex(@"Total\s+([\d.]+)%")]
     private static partial Regex ProgressRegex();
 
-    private async Task<string?> DiscoverEndpointAsync(CancellationToken cancellationToken)
-    {
-        foreach (var port in PortsToScan)
-        {
-            try
-            {
-                var endpoint = $"http://localhost:{port}";
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(2));
+    [GeneratedRegex(@"http://127\.0\.0\.1:\d+")]
+    private static partial Regex EndpointUrlRegex();
 
-                var response = await _httpClient.GetAsync($"{endpoint}/openai/status", cts.Token);
-                if (response.IsSuccessStatusCode)
+    /// <summary>
+    /// Detects the actual Foundry Local endpoint by running 'foundry service status'.
+    /// </summary>
+    /// <returns>The detected endpoint URL, or the default endpoint if detection fails.</returns>
+    private static async Task<string> DetectEndpointAsync()
+    {
+        try
+        {
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = "foundry",
+                Arguments = "service status",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(processInfo);
+            if (process is not null)
+            {
+                var output = await process.StandardOutput.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                Debug.WriteLine($"FoundryService: foundry service status: {output}");
+
+                // Extract the URL from the output (e.g., "http://127.0.0.1:51600")
+                var urlMatch = EndpointUrlRegex().Match(output);
+                if (urlMatch.Success)
                 {
-                    _logger?.LogInformation("Discovered Foundry Local at {Endpoint}", endpoint);
-                    return endpoint;
+                    Debug.WriteLine($"FoundryService: detected endpoint: {urlMatch.Value}");
+                    return urlMatch.Value;
                 }
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or SocketException)
-            {
-                // Port not responding, try next
-            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"FoundryService: error detecting endpoint: {ex.Message}");
         }
 
-        return null;
+        return DefaultEndpoint;
+    }
+
+    /// <summary>
+    /// Checks if the Foundry Local service is running at the given endpoint.
+    /// </summary>
+    private async Task<bool> IsServiceRunningAsync(string endpoint, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
+
+            var response = await _httpClient.GetAsync($"{endpoint}/openai/models", cts.Token);
+            Debug.WriteLine($"FoundryService: service check at {endpoint}: {response.StatusCode}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"FoundryService: service not running at {endpoint}: {ex.Message}");
+            return false;
+        }
     }
 
     private async Task<HashSet<string>> GetDownloadedModelNamesAsync(CancellationToken cancellationToken)
@@ -644,115 +681,5 @@ public partial class FoundryService : IFoundryService
             MaxTokens = maxTokens,
             CanRun = estimatedRamBytes <= totalRam || estimatedRamBytes == 0
         };
-    }
-
-    /// <summary>
-    /// Returns sample model data for UI development when Foundry Local is not available.
-    /// </summary>
-    private static IReadOnlyList<LocalModel> GetSampleModels()
-    {
-        var totalRam = 16L * 1024 * 1024 * 1024; // Assume 16 GB for sample data
-
-        return
-        [
-            new LocalModel
-            {
-                ModelId = "phi-4-generic-gpu",
-                Alias = "phi-4",
-                DisplayName = "Phi-4",
-                Provider = "Microsoft",
-                Task = "chat-completions",
-                Device = "GPU",
-                Status = ModelStatus.Available,
-                SizeInBytes = 9_000_000_000L,
-                EstimatedRamInBytes = 10_700_000_000L,
-                MaxTokens = 16384,
-                CanRun = 10_700_000_000L <= totalRam
-            },
-            new LocalModel
-            {
-                ModelId = "phi-4-generic-cpu",
-                Alias = "phi-4",
-                DisplayName = "Phi-4",
-                Provider = "Microsoft",
-                Task = "chat-completions",
-                Device = "CPU",
-                Status = ModelStatus.Available,
-                SizeInBytes = 10_900_000_000L,
-                EstimatedRamInBytes = 13_000_000_000L,
-                MaxTokens = 16384,
-                CanRun = 13_000_000_000L <= totalRam
-            },
-            new LocalModel
-            {
-                ModelId = "phi-3.5-mini-instruct-generic-gpu",
-                Alias = "phi-3.5-mini",
-                DisplayName = "Phi-3.5 Mini Instruct",
-                Provider = "Microsoft",
-                Task = "chat-completions",
-                Device = "GPU",
-                Status = ModelStatus.Downloaded,
-                SizeInBytes = 2_400_000_000L,
-                EstimatedRamInBytes = 2_800_000_000L,
-                MaxTokens = 131072,
-                CanRun = true
-            },
-            new LocalModel
-            {
-                ModelId = "phi-3.5-mini-instruct-generic-cpu",
-                Alias = "phi-3.5-mini",
-                DisplayName = "Phi-3.5 Mini Instruct",
-                Provider = "Microsoft",
-                Task = "chat-completions",
-                Device = "CPU",
-                Status = ModelStatus.Available,
-                SizeInBytes = 2_700_000_000L,
-                EstimatedRamInBytes = 3_200_000_000L,
-                MaxTokens = 131072,
-                CanRun = true
-            },
-            new LocalModel
-            {
-                ModelId = "qwen2.5-0.5b-instruct-generic-gpu",
-                Alias = "qwen2.5-0.5b",
-                DisplayName = "Qwen 2.5 0.5B Instruct",
-                Provider = "Alibaba",
-                Task = "chat-completions",
-                Device = "GPU",
-                Status = ModelStatus.Loaded,
-                SizeInBytes = 500_000_000L,
-                EstimatedRamInBytes = 1_000_000_000L,
-                MaxTokens = 32768,
-                CanRun = true
-            },
-            new LocalModel
-            {
-                ModelId = "mistral-7b-instruct-generic-gpu",
-                Alias = "mistral-7b",
-                DisplayName = "Mistral 7B Instruct",
-                Provider = "Mistral AI",
-                Task = "chat-completions",
-                Device = "GPU",
-                Status = ModelStatus.Available,
-                SizeInBytes = 4_100_000_000L,
-                EstimatedRamInBytes = 8_200_000_000L,
-                MaxTokens = 32768,
-                CanRun = true
-            },
-            new LocalModel
-            {
-                ModelId = "whisper-base-generic-cpu",
-                Alias = "whisper-base",
-                DisplayName = "Whisper Base",
-                Provider = "OpenAI",
-                Task = "automatic-speech-recognition",
-                Device = "CPU",
-                Status = ModelStatus.Available,
-                SizeInBytes = 145_000_000L,
-                EstimatedRamInBytes = 290_000_000L,
-                MaxTokens = 0,
-                CanRun = true
-            }
-        ];
     }
 }

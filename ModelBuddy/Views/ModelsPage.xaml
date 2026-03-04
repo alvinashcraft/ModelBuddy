@@ -15,7 +15,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
@@ -42,6 +41,14 @@
             <!-- Action Buttons -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                 <Button 
+                    Command="{x:Bind ViewModel.SelectForChatCommand}"
+                    ToolTipService.ToolTip="Select this model for chat">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8BD;" FontSize="16"/>
+                        <TextBlock Text="Use for Chat"/>
+                    </StackPanel>
+                </Button>
+                <Button 
                     Command="{x:Bind ViewModel.DownloadModelCommand}"
                     Style="{StaticResource AccentButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -55,7 +62,7 @@
                         <TextBlock Text="Delete"/>
                     </StackPanel>
                 </Button>
-                <Button Command="{x:Bind ViewModel.RefreshConnectionCommand}">
+                <Button Command="{x:Bind ViewModel.RefreshCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE72C;" FontSize="16"/>
                         <TextBlock Text="Refresh"/>
@@ -148,43 +155,5 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
-
-        <!-- Status Bar -->
-        <Grid Grid.Row="3" Padding="0,12,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Connection Status -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                <Ellipse 
-                    Width="10" 
-                    Height="10" 
-                    Fill="{ThemeResource SystemFillColorSuccessBrush}"
-                    Visibility="{x:Bind ViewModel.IsConnected, Mode=OneWay}"/>
-                <Ellipse 
-                    Width="10" 
-                    Height="10" 
-                    Fill="{ThemeResource SystemFillColorCriticalBrush}"
-                    Visibility="{x:Bind local:ModelsPage.InvertBool(ViewModel.IsConnected), Mode=OneWay}"/>
-                <TextBlock Text="Foundry Local" VerticalAlignment="Center"/>
-            </StackPanel>
-
-            <!-- Status Message -->
-            <TextBlock 
-                Grid.Column="1" 
-                Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" 
-                HorizontalAlignment="Center"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-
-            <!-- Loading Indicator -->
-            <ProgressRing 
-                Grid.Column="2" 
-                IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
-                Width="20"
-                Height="20"/>
-        </Grid>
     </Grid>
 </Page>

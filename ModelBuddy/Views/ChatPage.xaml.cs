@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using ModelBuddy.Models;
 using ModelBuddy.ViewModels;
 
@@ -61,4 +63,24 @@ public sealed partial class ChatPage : Page
     /// </summary>
     public static Visibility IsEmpty(int count) =>
         count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>
+    /// Gets background brush based on connection status.
+    /// </summary>
+    public static SolidColorBrush GetConnectionBackground(bool isConnected) =>
+        isConnected 
+            ? new SolidColorBrush(Colors.Green) { Opacity = 0.2 }
+            : new SolidColorBrush(Colors.Orange) { Opacity = 0.2 };
+
+    /// <summary>
+    /// Gets visibility for the connection status message.
+    /// </summary>
+    public static Visibility GetConnectionVisibility(string? statusMessage) =>
+        string.IsNullOrWhiteSpace(statusMessage) ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>
+    /// Gets visibility for the reconnect button.
+    /// </summary>
+    public static Visibility GetReconnectVisibility(bool isConnected, bool isLoading) =>
+        !isConnected && !isLoading ? Visibility.Visible : Visibility.Collapsed;
 }

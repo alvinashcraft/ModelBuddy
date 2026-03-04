@@ -71,6 +71,7 @@ public partial class App : Application
         });
 
         // ViewModels
+        services.AddSingleton<AppViewModel>(); // Singleton for shared app state
         services.AddTransient<ModelsViewModel>();
         services.AddTransient<ChatViewModel>();
         services.AddTransient<LogsViewModel>();

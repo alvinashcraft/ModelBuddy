@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using ModelBuddy.Messages;
 using ModelBuddy.Models;
 using ModelBuddy.Services;
 
@@ -9,17 +11,58 @@ namespace ModelBuddy.ViewModels;
 /// <summary>
 /// ViewModel for the Models management page.
 /// </summary>
-public partial class ModelsViewModel : ObservableObject
+public partial class ModelsViewModel : ObservableRecipient, IRecipient<ConnectionStateChangedMessage>
 {
     private readonly IFoundryService _foundryService;
+    private readonly AppViewModel _appViewModel;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ModelsViewModel"/> class.
     /// </summary>
     /// <param name="foundryService">The Foundry Local service.</param>
-    public ModelsViewModel(IFoundryService foundryService)
+    /// <param name="appViewModel">The shared application ViewModel.</param>
+    /// <param name="messenger">The messenger for pub/sub communication.</param>
+    public ModelsViewModel(IFoundryService foundryService, AppViewModel appViewModel, IMessenger messenger)
+        : base(messenger)
     {
         _foundryService = foundryService;
+        _appViewModel = appViewModel;
+
+        // Enable message receiving
+        IsActive = true;
+    }
+
+    /// <summary>
+    /// Handles connection state changed messages.
+    /// </summary>
+    public void Receive(ConnectionStateChangedMessage message)
+    {
+        OnPropertyChanged(nameof(IsConnected));
+
+        // If connected and no models loaded, load them
+        if (message.Value && _allModels.Count == 0)
+        {
+            _ = LoadModelsOnConnectedAsync();
+        }
+    }
+
+    private async Task LoadModelsOnConnectedAsync()
+    {
+        IsLoading = true;
+        StatusMessage = "Loading models...";
+        try
+        {
+            await LoadModelsAsync();
+            StatusMessage = $"Loaded {_allModels.Count} models";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     /// <summary>
@@ -34,16 +77,15 @@ public partial class ModelsViewModel : ObservableObject
     private bool _isLoading;
 
     /// <summary>
-    /// Gets or sets a value indicating whether Foundry Local is connected.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isConnected;
-
-    /// <summary>
     /// Gets or sets the status message to display.
     /// </summary>
     [ObservableProperty]
     private string _statusMessage = "Not connected";
+
+    /// <summary>
+    /// Gets whether the service is connected (from shared AppViewModel).
+    /// </summary>
+    public bool IsConnected => _appViewModel.IsConnected;
 
     /// <summary>
     /// Gets or sets the currently selected model.
@@ -51,6 +93,7 @@ public partial class ModelsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(DownloadModelCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteModelCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SelectForChatCommand))]
     private LocalModel? _selectedModel;
 
     /// <summary>
@@ -68,37 +111,20 @@ public partial class ModelsViewModel : ObservableObject
     private IReadOnlyList<LocalModel> _allModels = [];
 
     /// <summary>
-    /// Initializes the ViewModel and connects to Foundry Local.
+    /// Initializes the ViewModel and loads models if already connected.
     /// </summary>
     [RelayCommand]
     private async Task InitializeAsync()
     {
-        IsLoading = true;
-        StatusMessage = "Connecting to Foundry Local...";
+        // Update local state from shared AppViewModel
+        OnPropertyChanged(nameof(IsConnected));
 
-        try
+        // If already connected (connection completed before page loaded), load models
+        if (_appViewModel.IsConnected && _allModels.Count == 0)
         {
-            IsConnected = await _foundryService.InitializeAsync();
-
-            if (IsConnected)
-            {
-                StatusMessage = $"Connected to {_foundryService.Endpoint}";
-                await LoadModelsAsync();
-            }
-            else
-            {
-                StatusMessage = "Failed to connect to Foundry Local. Is the service running?";
-            }
+            await LoadModelsOnConnectedAsync();
         }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error: {ex.Message}";
-            IsConnected = false;
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        // Otherwise, wait for ConnectionStateChangedMessage from AppViewModel
     }
 
     /// <summary>
@@ -120,6 +146,12 @@ public partial class ModelsViewModel : ObservableObject
             _allModels = await _foundryService.GetAvailableModelsAsync();
             await FilterModelsAsync();
             StatusMessage = $"Loaded {_allModels.Count} models";
+
+            // Try to restore previously selected chat model
+            if (_appViewModel.TryRestoreSelectedModel(_allModels))
+            {
+                StatusMessage = $"Loaded {_allModels.Count} models (restored {_appViewModel.SelectedChatModel?.DisplayName} for chat)";
+            }
         }
         catch (Exception ex)
         {
@@ -228,11 +260,42 @@ public partial class ModelsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Refreshes the connection to Foundry Local.
+    /// Selects the current model for chat.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanSelectForChat))]
+    private void SelectForChat()
+    {
+        if (SelectedModel is null)
+        {
+            return;
+        }
+
+        _appViewModel.SelectModelForChat(SelectedModel);
+        StatusMessage = $"Selected {SelectedModel.DisplayName} for chat";
+    }
+
+    private bool CanSelectForChat()
+    {
+        return SelectedModel is not null &&
+               (SelectedModel.Task.Contains("chat", StringComparison.OrdinalIgnoreCase)) &&
+               (SelectedModel.Status == ModelStatus.Downloaded || SelectedModel.Status == ModelStatus.Loaded);
+    }
+
+    /// <summary>
+    /// Refreshes the models list.
     /// </summary>
     [RelayCommand]
-    private async Task RefreshConnectionAsync()
+    private async Task RefreshAsync()
     {
-        await InitializeAsync();
+        IsLoading = true;
+        try
+        {
+            await LoadModelsAsync();
+            StatusMessage = $"Loaded {_allModels.Count} models";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 }

@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using ModelBuddy.Messages;
 using ModelBuddy.Models;
 using ModelBuddy.Services;
 
@@ -10,17 +12,59 @@ namespace ModelBuddy.ViewModels;
 /// <summary>
 /// ViewModel for the Chat page.
 /// </summary>
-public partial class ChatViewModel : ObservableObject
+public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionStateChangedMessage>
 {
     private readonly IFoundryService _foundryService;
+    private readonly AppViewModel _appViewModel;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatViewModel"/> class.
     /// </summary>
     /// <param name="foundryService">The Foundry service.</param>
-    public ChatViewModel(IFoundryService foundryService)
+    /// <param name="appViewModel">The shared application ViewModel.</param>
+    /// <param name="messenger">The messenger for pub/sub communication.</param>
+    public ChatViewModel(IFoundryService foundryService, AppViewModel appViewModel, IMessenger messenger)
+        : base(messenger)
     {
         _foundryService = foundryService;
+        _appViewModel = appViewModel;
+
+        // Enable message receiving
+        IsActive = true;
+    }
+
+    /// <summary>
+    /// Handles connection state changed messages.
+    /// </summary>
+    public void Receive(ConnectionStateChangedMessage message)
+    {
+        OnPropertyChanged(nameof(IsConnected));
+
+        if (IsConnected)
+        {
+            StatusMessage = string.Empty;
+            if (AvailableModels.Count == 0)
+            {
+                _ = LoadModelsOnConnectedAsync();
+            }
+        }
+        else
+        {
+            StatusMessage = message.StatusMessage;
+        }
+    }
+
+    private async Task LoadModelsOnConnectedAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            await LoadModelsAsync();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     /// <summary>
@@ -34,11 +78,21 @@ public partial class ChatViewModel : ObservableObject
     public ObservableCollection<LocalModel> AvailableModels { get; } = [];
 
     /// <summary>
-    /// Gets or sets the selected model.
+    /// Gets or sets the selected model (synced with AppViewModel).
     /// </summary>
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
-    private LocalModel? _selectedModel;
+    public LocalModel? SelectedModel
+    {
+        get => _appViewModel.SelectedChatModel;
+        set
+        {
+            if (_appViewModel.SelectedChatModel != value)
+            {
+                _appViewModel.SelectedChatModel = value;
+                OnPropertyChanged();
+                SendMessageCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
 
     /// <summary>
     /// Gets or sets the user input text.
@@ -74,41 +128,51 @@ public partial class ChatViewModel : ObservableObject
     private string _statusMessage = string.Empty;
 
     /// <summary>
-    /// Gets or sets whether the service is connected.
+    /// Gets whether the service is connected.
+    /// </summary>
+    public bool IsConnected => _foundryService.IsConnected;
+
+    /// <summary>
+    /// Gets or sets whether the page is loading.
     /// </summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
-    private bool _isConnected;
+    private bool _isLoading;
 
     private CancellationTokenSource? _generationCts;
 
+
     /// <summary>
-    /// Initializes the chat page and connects to Foundry Local.
+    /// Initializes the chat page using shared connection state.
     /// </summary>
     [RelayCommand]
     private async Task InitializeAsync()
     {
-        StatusMessage = "Connecting to Foundry Local...";
+        // Notify UI of connection state from shared ViewModel
+        OnPropertyChanged(nameof(IsConnected));
+        OnPropertyChanged(nameof(SelectedModel));
 
-        try
+        if (!IsConnected)
         {
-            IsConnected = await _foundryService.InitializeAsync();
+            StatusMessage = _appViewModel.ConnectionStatus;
+            return;
+        }
 
-            if (IsConnected)
+        StatusMessage = string.Empty;
+
+        // Load available models if we don't have any yet
+        if (AvailableModels.Count == 0)
+        {
+            IsLoading = true;
+            try
             {
-                StatusMessage = string.Empty;
                 await LoadModelsAsync();
             }
-            else
+            finally
             {
-                StatusMessage = "Failed to connect to Foundry Local. Is the service running?";
+                IsLoading = false;
             }
         }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error: {ex.Message}";
-            IsConnected = false;
-        }
+        // If not connected yet, the Receive handler will load when connection completes
     }
 
     /// <summary>
@@ -125,7 +189,7 @@ public partial class ChatViewModel : ObservableObject
         AvailableModels.Clear();
 
         var models = await _foundryService.GetAvailableModelsAsync();
-        foreach (var model in models.Where(m => m.Task == "chat-completions" && 
+        foreach (var model in models.Where(m => m.Task.Contains("chat", StringComparison.OrdinalIgnoreCase) && 
                                                 (m.Status == ModelStatus.Downloaded || m.Status == ModelStatus.Loaded)))
         {
             AvailableModels.Add(model);

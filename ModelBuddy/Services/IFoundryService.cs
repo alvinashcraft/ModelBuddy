@@ -13,11 +13,6 @@ public interface IFoundryService
     bool IsConnected { get; }
 
     /// <summary>
-    /// Gets a value indicating whether sample data is being used (for UI development).
-    /// </summary>
-    bool UsingSampleData { get; }
-
-    /// <summary>
     /// Gets the Foundry Local endpoint URI.
     /// </summary>
     Uri? Endpoint { get; }
