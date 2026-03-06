@@ -3,6 +3,7 @@ using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using ModelBuddy.Constants;
 using ModelBuddy.Messages;
 using ModelBuddy.Models;
 using ModelBuddy.Services;
@@ -116,10 +117,10 @@ public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionS
     private string _currentResponse = string.Empty;
 
     /// <summary>
-    /// Gets or sets the system prompt.
+    /// Gets or sets the system prompt with RAI content safety guidelines.
     /// </summary>
     [ObservableProperty]
-    private string _systemPrompt = "You are a helpful AI assistant.";
+    private string _systemPrompt = ContentSafetyConstants.SystemPrompt;
 
     /// <summary>
     /// Gets or sets the status message.
