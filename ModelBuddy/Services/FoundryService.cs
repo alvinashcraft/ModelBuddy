@@ -18,15 +18,18 @@ public partial class FoundryService : IFoundryService
     private const string DefaultEndpoint = "http://127.0.0.1:5272";
     private readonly HttpClient _httpClient;
     private readonly ILogger<FoundryService>? _logger;
+    private readonly ISettingsService _settingsService;
     private string? _cachedEndpoint;
     private List<JsonElement>? _catalogCache;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FoundryService"/> class.
     /// </summary>
+    /// <param name="settingsService">The settings service.</param>
     /// <param name="logger">Optional logger instance.</param>
-    public FoundryService(ILogger<FoundryService>? logger = null)
+    public FoundryService(ISettingsService settingsService, ILogger<FoundryService>? logger = null)
     {
+        _settingsService = settingsService;
         _logger = logger;
         // Disable proxy to ensure localhost requests aren't intercepted
         var handler = new HttpClientHandler { UseProxy = false };
@@ -44,6 +47,21 @@ public partial class FoundryService : IFoundryService
     {
         try
         {
+            // Check for user-configured endpoint first
+            var customEndpoint = _settingsService.CustomEndpoint;
+            if (!string.IsNullOrWhiteSpace(customEndpoint))
+            {
+                Debug.WriteLine($"FoundryService: trying custom endpoint {customEndpoint}");
+                if (await IsServiceRunningAsync(customEndpoint, cancellationToken))
+                {
+                    _cachedEndpoint = customEndpoint;
+                    _logger?.LogInformation("Connected to Foundry Local at custom endpoint {Endpoint}", customEndpoint);
+                    return true;
+                }
+
+                _logger?.LogWarning("Custom endpoint {Endpoint} not responding, falling back to auto-detect", customEndpoint);
+            }
+
             // Detect the endpoint from 'foundry service status' (or use default)
             var endpoint = await DetectEndpointAsync();
             Debug.WriteLine($"FoundryService: detected endpoint {endpoint}");

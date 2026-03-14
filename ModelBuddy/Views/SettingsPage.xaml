@@ -7,21 +7,125 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Padding="24">
-        <StackPanel
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Spacing="16">
-            <FontIcon Glyph="&#xE713;" FontSize="48" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-            <TextBlock 
-                Text="Settings" 
-                Style="{StaticResource TitleTextBlockStyle}"
-                HorizontalAlignment="Center"/>
-            <TextBlock 
-                Text="Configure ModelBuddy settings. Coming soon!"
-                Style="{StaticResource BodyTextBlockStyle}"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                HorizontalAlignment="Center"/>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="4" Padding="24,24,24,48" MaxWidth="800" HorizontalAlignment="Stretch">
+
+            <!-- Page Header -->
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16"/>
+
+            <!-- ═══════════ Appearance ═══════════ -->
+            <TextBlock Text="Appearance" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="App theme" Style="{StaticResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="Select which app theme to display"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              MinWidth="160"
+                              VerticalAlignment="Center"
+                              SelectedIndex="{x:Bind ViewModel.SelectedThemeIndex, Mode=TwoWay}">
+                        <ComboBoxItem Content="Use system setting"/>
+                        <ComboBoxItem Content="Light"/>
+                        <ComboBoxItem Content="Dark"/>
+                    </ComboBox>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════ Chat ═══════════ -->
+            <TextBlock Text="Chat" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="System instructions" Style="{StaticResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="Describe how the assistant should behave. Content safety guidelines are always applied."
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <TextBox Text="{x:Bind ViewModel.SystemInstructions, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="80"
+                             MaxHeight="200"/>
+                    <Button Content="Reset to default"
+                            Command="{x:Bind ViewModel.ResetSystemInstructionsCommand}"
+                            Visibility="{x:Bind ViewModel.IsInstructionsModified, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                    <!-- Read-only safety guidelines -->
+                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <Expander.Header>
+                            <TextBlock Text="Content safety guidelines (always applied)"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </Expander.Header>
+                        <TextBlock Text="{x:Bind ViewModel.SafetyGuidelines}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   TextWrapping="Wrap"
+                                   IsTextSelectionEnabled="True"/>
+                    </Expander>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════ Connection ═══════════ -->
+            <TextBlock Text="Connection" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Foundry Local endpoint" Style="{StaticResource BodyTextBlockStyle}"/>
+                        <TextBlock Text="Leave empty to auto-detect. Reconnect after changing."
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                    <TextBox Text="{x:Bind ViewModel.CustomEndpoint, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                             PlaceholderText="http://127.0.0.1:5272"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════ About ═══════════ -->
+            <TextBlock Text="About" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,24,0,8"/>
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <Image Source="/Assets/ModelBuddy32.png" Width="32" Height="32"/>
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="ModelBuddy" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="{x:Bind ViewModel.AppVersion}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="A desktop companion for managing and chatting with on-device AI models via Foundry Local."
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                        <HyperlinkButton Content="GitHub" NavigateUri="https://github.com/alvinashcraft/ModelBuddy" Padding="0"/>
+                        <TextBlock Text="·" VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" Margin="4,0"/>
+                        <HyperlinkButton Content="License" NavigateUri="https://github.com/alvinashcraft/ModelBuddy/blob/main/LICENSE.txt" Padding="0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </Page>

@@ -6,11 +6,16 @@ namespace ModelBuddy.Constants;
 public static class ContentSafetyConstants
 {
     /// <summary>
-    /// System prompt with moderate content filtering guidelines.
+    /// The default system instructions that describe the assistant's personality.
+    /// Users may customise or extend this portion.
     /// </summary>
-    public const string SystemPrompt = """
-        You are ModelBuddy, a helpful, friendly, and responsible AI assistant. 
-        
+    public const string DefaultInstructions =
+        "You are ModelBuddy, a helpful, friendly, and responsible AI assistant.";
+
+    /// <summary>
+    /// Content safety guidelines that are always appended and cannot be removed by the user.
+    /// </summary>
+    public const string SafetyGuidelines = """
         Guidelines:
         - Provide clear, accurate, and concise responses
         - Be respectful and inclusive in all interactions
@@ -24,4 +29,12 @@ public static class ContentSafetyConstants
         
         If a request violates these guidelines, politely decline and offer to help with something else.
         """;
+
+    /// <summary>
+    /// Builds the full system prompt from custom instructions and the safety guidelines.
+    /// </summary>
+    /// <param name="instructions">The user-customisable instructions.</param>
+    /// <returns>The complete system prompt.</returns>
+    public static string BuildSystemPrompt(string instructions) =>
+        $"{instructions}\n\n{SafetyGuidelines}";
 }

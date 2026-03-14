@@ -17,6 +17,7 @@ public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionS
 {
     private readonly IFoundryService _foundryService;
     private readonly AppViewModel _appViewModel;
+    private readonly ISettingsService _settingsService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatViewModel"/> class.
@@ -24,11 +25,16 @@ public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionS
     /// <param name="foundryService">The Foundry service.</param>
     /// <param name="appViewModel">The shared application ViewModel.</param>
     /// <param name="messenger">The messenger for pub/sub communication.</param>
-    public ChatViewModel(IFoundryService foundryService, AppViewModel appViewModel, IMessenger messenger)
+    /// <param name="settingsService">The settings service.</param>
+    public ChatViewModel(IFoundryService foundryService, AppViewModel appViewModel, IMessenger messenger, ISettingsService settingsService)
         : base(messenger)
     {
         _foundryService = foundryService;
         _appViewModel = appViewModel;
+        _settingsService = settingsService;
+
+        // Load system prompt from settings (instructions + safety guidelines)
+        _systemPrompt = ContentSafetyConstants.BuildSystemPrompt(_settingsService.SystemInstructions);
 
         // Enable message receiving
         IsActive = true;
@@ -120,7 +126,7 @@ public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionS
     /// Gets or sets the system prompt with RAI content safety guidelines.
     /// </summary>
     [ObservableProperty]
-    private string _systemPrompt = ContentSafetyConstants.SystemPrompt;
+    private string _systemPrompt;
 
     /// <summary>
     /// Gets or sets the status message.
@@ -148,6 +154,9 @@ public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionS
     [RelayCommand]
     private async Task InitializeAsync()
     {
+        // Refresh system prompt from settings in case user changed it
+        SystemPrompt = ContentSafetyConstants.BuildSystemPrompt(_settingsService.SystemInstructions);
+
         // Notify UI of connection state from shared ViewModel
         OnPropertyChanged(nameof(IsConnected));
         OnPropertyChanged(nameof(SelectedModel));

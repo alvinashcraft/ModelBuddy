@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using ModelBuddy.Services;
 using ModelBuddy.ViewModels;
 using ModelBuddy.Views;
 
@@ -24,11 +25,16 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public MainWindow()
     {
-        ViewModel = (Application.Current as App)!.Services.GetRequiredService<AppViewModel>();
+        var app = (Application.Current as App)!;
+        ViewModel = app.Services.GetRequiredService<AppViewModel>();
 
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+
+        // Apply saved theme
+        var settingsService = app.Services.GetRequiredService<ISettingsService>();
+        app.ApplyTheme(settingsService.AppTheme);
 
         // Handle window close to clean up resources
         Closed += MainWindow_Closed;

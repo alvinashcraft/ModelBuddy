@@ -13,7 +13,10 @@ namespace ModelBuddy;
 /// </summary>
 public partial class App : Application
 {
-    private Window? _window;
+    /// <summary>
+    /// Gets the main application window.
+    /// </summary>
+    public Window? MainWindow { get; private set; }
 
     /// <summary>
     /// Gets the current application's service provider.
@@ -37,8 +40,25 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
-        _window.Activate();
+        MainWindow = new MainWindow();
+        MainWindow.Activate();
+    }
+
+    /// <summary>
+    /// Applies the specified theme to the main window.
+    /// </summary>
+    /// <param name="theme">The theme name: "Auto", "Light", or "Dark".</param>
+    public void ApplyTheme(string theme)
+    {
+        if (MainWindow?.Content is FrameworkElement rootElement)
+        {
+            rootElement.RequestedTheme = theme switch
+            {
+                "Light" => ElementTheme.Light,
+                "Dark" => ElementTheme.Dark,
+                _ => ElementTheme.Default
+            };
+        }
     }
 
     private static IServiceProvider ConfigureServices(DispatcherQueue dispatcherQueue)
@@ -55,6 +75,7 @@ public partial class App : Application
         services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
 
         // Services
+        services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDispatcherService>(new DispatcherService(dispatcherQueue));
         services.AddSingleton<ILogStore, InMemoryLogStore>();
         services.AddSingleton<IFoundryService, FoundryService>();
@@ -75,6 +96,7 @@ public partial class App : Application
         services.AddTransient<ModelsViewModel>();
         services.AddTransient<ChatViewModel>();
         services.AddTransient<LogsViewModel>();
+        services.AddTransient<SettingsViewModel>();
 
         return services.BuildServiceProvider();
     }
