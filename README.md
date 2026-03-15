@@ -6,6 +6,8 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![WinUI 3](https://img.shields.io/badge/WinUI-3-blue)
 
+![A screenshot of the Model Buddy model management page](./Screenshots/ModelBuddy_Models.png)
+
 ## Features
 
 - **Chat** — Stream responses from on-device models with Markdown rendering, stop generation, and full conversation history
