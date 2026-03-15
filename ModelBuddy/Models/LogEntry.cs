@@ -62,7 +62,7 @@ public enum LogSourceType
 {
     /// <summary>All log sources.</summary>
     All,
-    /// <summary>Application logs from ModelBuddy.</summary>
+    /// <summary>Application logs from Model Buddy.</summary>
     Application,
     /// <summary>Logs from Foundry Local service.</summary>
     FoundryLocal,

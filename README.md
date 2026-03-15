@@ -6,6 +6,8 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 ![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![WinUI 3](https://img.shields.io/badge/WinUI-3-blue)
 
+![A screenshot of the Model Buddy model management page](./Screenshots/ModelBuddy_Models.png)
+
 ## Features
 
 - **Chat** — Stream responses from on-device models with Markdown rendering, stop generation, and full conversation history
@@ -38,7 +40,7 @@ The Settings page (gear icon) lets you customize the app without touching code.
 | Section | Setting | Description | Default |
 |---------|---------|-------------|---------|
 | **Appearance** | App theme | Light, Dark, or use system setting | Use system setting |
-| **Chat** | System instructions | Describe how the AI assistant should behave. Content safety guidelines are always appended automatically and cannot be removed. | *"You are ModelBuddy, a helpful, friendly, and responsible AI assistant."* |
+| **Chat** | System instructions | Describe how the AI assistant should behave. Content safety guidelines are always appended automatically and cannot be removed. | *"You are Model Buddy, a helpful, friendly, and responsible AI assistant."* |
 | **Connection** | Foundry Local endpoint | Override the auto-detected endpoint. Leave empty to auto-detect. Reconnect from the status bar after changing. | Auto-detect |
 | **About** | — | App version, GitHub link, license link | — |
 

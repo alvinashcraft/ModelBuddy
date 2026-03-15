@@ -10,7 +10,7 @@ public static class ContentSafetyConstants
     /// Users may customize or extend this portion.
     /// </summary>
     public const string DefaultInstructions =
-        "You are ModelBuddy, a helpful, friendly, and responsible AI assistant.";
+        "You are Model Buddy, a helpful, friendly, and responsible AI assistant.";
 
     /// <summary>
     /// Content safety guidelines that are always appended and cannot be removed by the user.
