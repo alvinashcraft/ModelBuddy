@@ -96,6 +96,19 @@
                         Padding="4,0"
                         VerticalAlignment="Center"
                         Visibility="{Binding CanReconnect, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TextBlock 
+                        Text="·"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding CanReconnect, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <HyperlinkButton 
+                        Content="Get started with Foundry Local"
+                        NavigateUri="https://learn.microsoft.com/azure/foundry-local/get-started"
+                        FontSize="12"
+                        Padding="4,0"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding CanReconnect, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     <ProgressRing 
                         IsActive="{Binding IsConnecting}"
                         Visibility="{Binding IsConnecting, Converter={StaticResource BoolToVisibilityConverter}}"

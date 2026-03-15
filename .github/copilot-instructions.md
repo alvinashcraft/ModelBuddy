@@ -25,6 +25,8 @@ The solution file is `ModelBuddy.slnx` (XML-based solution format). Supported pl
 - **WinUI 3 / Windows App SDK** — uses `Microsoft.WindowsAppSDK` and `Microsoft.UI.Xaml` (not UWP's `Windows.UI.Xaml`).
 - **System AI capability** — the `Package.appxmanifest` declares `systemai:Capability Name="systemAIModels"`, which grants access to Windows on-device AI models. This requires the `systemai` XML namespace.
 - **Mica backdrop** — `MainWindow` uses `<MicaBackdrop />` for the system material effect.
+- **Settings service** — `ISettingsService` / `SettingsService` persists user preferences to `ApplicationData.Current.LocalSettings`. The `SettingsViewModel` binds to the Settings page UI and applies changes (e.g. theme) immediately.
+- **Content safety** — `ContentSafetyConstants` is split into `DefaultInstructions` (editable personality) and `SafetyGuidelines` (immutable). `BuildSystemPrompt()` concatenates them. `ChatViewModel` always sends the combined prompt — settings only expose the instructions portion.
 
 ## Foundry Local Integration
 
@@ -483,6 +485,7 @@ public partial class App : Application
         services.AddTransient<ModelListViewModel>();
 
         // Services
+        services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IModelService, FoundryModelService>();
 
         return services.BuildServiceProvider();
@@ -515,9 +518,11 @@ Prefer using event-to-command patterns in XAML over code-behind event handlers w
 ModelBuddy/
   ViewModels/        # ObservableObject / ObservableRecipient partial classes
   Views/             # XAML pages/windows + code-behind
-  Services/          # Interfaces and implementations (e.g., IModelService)
+  Services/          # Interfaces and implementations (e.g., IFoundryService, ISettingsService)
   Models/            # Plain data classes / DTOs
   Messages/          # Messenger message types
+  Constants/         # App-wide constants (e.g., ContentSafetyConstants)
+  Converters/        # IValueConverter implementations for XAML bindings
 ```
 
 ## UI Design
