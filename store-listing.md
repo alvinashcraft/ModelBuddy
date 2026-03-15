@@ -43,7 +43,7 @@ Model Buddy is free and open source, built with WinUI 3 and .NET 10.
 
 ## Keywords
 
-AI, local AI, on-device, Foundry Local, chat, LLM, model manager, WinUI, open source, privacy
+AI, local AI, on-device, Foundry Local utility, chat, LLM, model manager, open source, privacy
 
 ## Privacy Notice
 
