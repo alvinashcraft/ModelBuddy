@@ -1,4 +1,4 @@
-# ModelBuddy
+# Model Buddy
 
 A WinUI 3 desktop companion for managing and chatting with on-device AI models via [Foundry Local](https://github.com/microsoft/Foundry-Local).
 
