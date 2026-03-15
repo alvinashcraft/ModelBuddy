@@ -7,7 +7,7 @@ public static class ContentSafetyConstants
 {
     /// <summary>
     /// The default system instructions that describe the assistant's personality.
-    /// Users may customise or extend this portion.
+    /// Users may customize or extend this portion.
     /// </summary>
     public const string DefaultInstructions =
         "You are ModelBuddy, a helpful, friendly, and responsible AI assistant.";
@@ -33,7 +33,7 @@ public static class ContentSafetyConstants
     /// <summary>
     /// Builds the full system prompt from custom instructions and the safety guidelines.
     /// </summary>
-    /// <param name="instructions">The user-customisable instructions.</param>
+    /// <param name="instructions">The user-customizable instructions.</param>
     /// <returns>The complete system prompt.</returns>
     public static string BuildSystemPrompt(string instructions) =>
         $"{instructions}\n\n{SafetyGuidelines}";

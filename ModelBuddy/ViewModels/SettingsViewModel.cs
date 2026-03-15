@@ -39,7 +39,7 @@ public partial class SettingsViewModel : ObservableObject
     private int _selectedThemeIndex;
 
     /// <summary>
-    /// Gets or sets the user-customisable system instructions.
+    /// Gets or sets the user-customizable system instructions.
     /// </summary>
     [ObservableProperty]
     private string _systemInstructions;

@@ -3,7 +3,7 @@
 A WinUI 3 desktop companion for managing and chatting with on-device AI models via [Foundry Local](https://github.com/microsoft/Foundry-Local).
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows)
-![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet)
+![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![WinUI 3](https://img.shields.io/badge/WinUI-3-blue)
 
 ## Features
@@ -11,11 +11,11 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 - **Chat** — Stream responses from on-device models with Markdown rendering, stop generation, and full conversation history
 - **Models** — Browse the Foundry Local catalog, download, delete, and select models for chat with size / RAM / device info
 - **Logs** — View application, Foundry Local, and Windows Event logs with level and source filtering
-- **Settings** — Theme selection, customisable system instructions, custom Foundry endpoint, and app info
+- **Settings** — Theme selection, customizable system instructions, custom Foundry endpoint, and app info
 
 ## Prerequisites
 
-- Windows 10 (build 17763) or later
+- Windows 10 (build 26100) or later
 - [Foundry Local](https://github.com/microsoft/Foundry-Local) runtime:
 
 ```powershell
@@ -33,7 +33,7 @@ Supported platforms: `x64`, `x86`, `ARM64`.
 
 ## Settings
 
-The Settings page (gear icon) lets you customise the app without touching code.
+The Settings page (gear icon) lets you customize the app without touching code.
 
 | Section | Setting | Description | Default |
 |---------|---------|-------------|---------|

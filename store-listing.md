@@ -1,8 +1,8 @@
-# ModelBuddy — Microsoft Store Listing
+# Model Buddy — Microsoft Store Listing
 
 ## Short Title
 
-ModelBuddy
+Model Buddy
 
 ## Voice Title
 
@@ -14,22 +14,24 @@ Manage and chat with on-device AI models powered by Foundry Local.
 
 ## Description
 
-ModelBuddy is a desktop companion for Windows that makes it easy to discover, download, and chat with on-device AI models through Microsoft Foundry Local — no cloud required.
+Note: Model Buddy is fully self-contained — the .NET runtime and all dependencies are bundled in the app. No additional software installation is required. Connect to local AI in Foundry Local to manage and chat with AI models.
+
+Model Buddy is a desktop companion for Windows that makes it easy to discover, download, and chat with on-device AI models through Microsoft Foundry Local — no cloud required.
 
 Browse the full Foundry Local model catalog to see what's available, check file sizes and RAM requirements, and download models with a single click. Once a model is downloaded, start a streaming chat conversation right inside the app with full Markdown rendering.
 
-ModelBuddy connects to the Foundry Local inference service automatically, but you can point it at a custom endpoint if needed. Built-in content safety guidelines are always applied to every conversation to help keep interactions responsible and respectful.
+Model Buddy connects to the Foundry Local inference service automatically, but you can point it at a custom endpoint if needed. Built-in content safety guidelines are always applied to every conversation to help keep interactions responsible and respectful.
 
-The Settings page lets you personalise the experience: choose a light, dark, or system-matched theme; customise the system instructions sent to the model; and override the Foundry Local endpoint. Application, Foundry Local, and Windows Event logs are available on the Logs page for troubleshooting.
+The Settings page lets you personalize the experience: choose a light, dark, or system-matched theme; customize the system instructions sent to the model; and override the Foundry Local endpoint. Application, Foundry Local, and Windows Event logs are available on the Logs page for troubleshooting.
 
-ModelBuddy is free and open source, built with WinUI 3 and .NET 8.
+Model Buddy is free and open source, built with WinUI 3 and .NET 10.
 
 ## What's New
 
 - Initial release
 - Chat with on-device AI models using streaming responses and Markdown rendering
 - Browse, download, and manage models from the Foundry Local catalog
-- Settings page with theme selection, customisable system instructions, and custom endpoint
+- Settings page with theme selection, customizable system instructions, and custom endpoint
 - Application and Foundry Local log viewer with filtering
 
 ## Features
@@ -45,13 +47,13 @@ AI, local AI, on-device, Foundry Local, chat, LLM, model manager, WinUI, open so
 
 ## Privacy Notice
 
-ModelBuddy does not collect, transmit, or store any personal data. All AI inference runs locally on your device through Microsoft Foundry Local. No data is sent to external servers. The app stores user preferences (theme, system instructions, custom endpoint, selected model) in local Windows application settings on your device only.
+Model Buddy does not collect, transmit, or store any personal data. All AI inference runs locally on your device through Microsoft Foundry Local. No data is sent to external servers. The app stores user preferences (theme, system instructions, custom endpoint, selected model) in local Windows application settings on your device only.
 
 ## Testing Notes for Store Reviewers
 
 ### Prerequisites
 
-ModelBuddy requires **Microsoft Foundry Local** to be installed. Without it, the app will launch but display "Not connected" in the status bar. To install:
+Model Buddy requires **Microsoft Foundry Local** to be installed. Without it, the app will launch but display "Not connected" in the status bar. To install:
 
 ```
 winget install Microsoft.FoundryLocal

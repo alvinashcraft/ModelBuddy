@@ -11,7 +11,7 @@ public interface ISettingsService
     string AppTheme { get; set; }
 
     /// <summary>
-    /// Gets or sets the user-customisable system instructions (personality / behaviour).
+    /// Gets or sets the user-customizable system instructions (personality / behavior).
     /// The content safety guidelines are always appended automatically.
     /// </summary>
     string SystemInstructions { get; set; }

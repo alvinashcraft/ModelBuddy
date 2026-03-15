@@ -579,7 +579,7 @@ References:
 ## Key Conventions
 
 - **Nullable reference types** are enabled (`<Nullable>enable</Nullable>`).
-- **Target framework**: `net8.0-windows10.0.19041.0` with minimum version `10.0.17763.0`.
+- **Target framework**: `net10.0-windows10.0.26100.0` with minimum version `10.0.26100.0`.
 - **Namespace**: all code lives under the `ModelBuddy` namespace.
 - **XAML pattern**: code-behind files (`.xaml.cs`) accompany each XAML view. Views are partial classes calling `InitializeComponent()`.
 - When adding new windows or pages, follow the existing pattern: XAML file + code-behind partial class in the `ModelBuddy` namespace.
