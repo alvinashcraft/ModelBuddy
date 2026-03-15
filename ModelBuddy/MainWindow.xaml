@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="ModelBuddy">
+    Title="Model Buddy">
 
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -28,7 +28,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="12" Margin="16,0,0,0" VerticalAlignment="Center">
                 <Image Source="/Assets/ModelBuddy32.png" Width="20" Height="20"/>
-                <TextBlock Text="ModelBuddy" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"/>
+                <TextBlock Text="Model Buddy" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
 
