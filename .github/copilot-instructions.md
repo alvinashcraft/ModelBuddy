@@ -1,10 +1,10 @@
-# Copilot Instructions for ModelBuddy
+# Copilot Instructions for Model Buddy
 
 > **Before starting any task, scan `.github/skills/` for relevant skills.** Each subfolder contains a `SKILL.md` with its description and detailed guidance — read and follow any that apply to the work at hand.
 
 ## Project Overview
 
-ModelBuddy is a WinUI 3 desktop application targeting Windows 10/11 that uses the Windows App SDK `systemAIModels` capability to interact with on-device AI models. It is packaged as an MSIX app.
+Model Buddy is a WinUI 3 desktop application targeting Windows 10/11 that uses the Windows App SDK `systemAIModels` capability to interact with on-device AI models. It is packaged as an MSIX app.
 
 ## Build Commands
 
@@ -44,7 +44,7 @@ foundry --version
 
 ### REST API Approach (Recommended)
 
-ModelBuddy uses the Foundry Local REST API directly instead of the SDK. This approach:
+Model Buddy uses the Foundry Local REST API directly instead of the SDK. This approach:
 - Provides full model metadata (file size, RAM requirements, device type, max tokens)
 - Has no dependency on the Foundry Local SDK NuGet packages
 - Is more reliable for auto-discovery via port scanning
@@ -210,7 +210,7 @@ foundry cache list                  # List cached model files
 
 ### Reference Implementation: FoundryWebUI
 
-For feature and UI design reference, see [FoundryWebUI](https://github.com/itopstalk/FoundryWebUI) — a web-based Foundry Local manager with similar functionality. Key features to implement in ModelBuddy:
+For feature and UI design reference, see [FoundryWebUI](https://github.com/itopstalk/FoundryWebUI) — a web-based Foundry Local manager with similar functionality. Key features to implement in Model Buddy:
 
 | Feature | Description |
 |---------|-------------|

@@ -107,7 +107,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                         <Image Source="/Assets/ModelBuddy32.png" Width="32" Height="32"/>
                         <StackPanel Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="ModelBuddy" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Model Buddy" Style="{StaticResource BodyStrongTextBlockStyle}"/>
                             <TextBlock Text="{x:Bind ViewModel.AppVersion}"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>

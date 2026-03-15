@@ -1,4 +1,4 @@
-# ModelBuddy
+# Model Buddy
 
 A WinUI 3 desktop companion for managing and chatting with on-device AI models via [Foundry Local](https://github.com/microsoft/Foundry-Local).
 
@@ -40,7 +40,7 @@ The Settings page (gear icon) lets you customize the app without touching code.
 | Section | Setting | Description | Default |
 |---------|---------|-------------|---------|
 | **Appearance** | App theme | Light, Dark, or use system setting | Use system setting |
-| **Chat** | System instructions | Describe how the AI assistant should behave. Content safety guidelines are always appended automatically and cannot be removed. | *"You are ModelBuddy, a helpful, friendly, and responsible AI assistant."* |
+| **Chat** | System instructions | Describe how the AI assistant should behave. Content safety guidelines are always appended automatically and cannot be removed. | *"You are Model Buddy, a helpful, friendly, and responsible AI assistant."* |
 | **Connection** | Foundry Local endpoint | Override the auto-detected endpoint. Leave empty to auto-detect. Reconnect from the status bar after changing. | Auto-detect |
 | **About** | — | App version, GitHub link, license link | — |
 
