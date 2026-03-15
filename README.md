@@ -48,6 +48,10 @@ The Settings page (gear icon) lets you customize the app without touching code.
 
 Users may edit or extend the system instructions, but the built-in content safety guidelines are **always** appended to every chat request and cannot be modified or removed through settings.
 
+## Acknowledgements
+
+Model Buddy was inspired by [FoundryWebUI](https://github.com/itopstalk/FoundryWebUI) by Orin Thomas.
+
 ## License
 
 See [LICENSE.txt](LICENSE.txt).
