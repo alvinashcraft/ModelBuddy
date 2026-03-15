@@ -123,6 +123,17 @@
                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}" Margin="4,0"/>
                         <HyperlinkButton Content="License" NavigateUri="https://github.com/alvinashcraft/ModelBuddy/blob/main/LICENSE.txt" Padding="0"/>
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                        <TextBlock Text="Inspired by"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                        <HyperlinkButton Content="FoundryWebUI" NavigateUri="https://github.com/itopstalk/FoundryWebUI" Padding="0"/>
+                        <TextBlock Text="by Orin Thomas"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
