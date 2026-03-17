@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using ModelBuddy.Services;
 using ModelBuddy.ViewModels;
 using ModelBuddy.Views;
@@ -31,6 +32,16 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+
+        // Apply Mica backdrop if supported
+        try
+        {
+            SystemBackdrop = new MicaBackdrop();
+        }
+        catch
+        {
+            // Mica not available on this OS version
+        }
 
         // Apply saved theme
         var settingsService = app.Services.GetRequiredService<ISettingsService>();
