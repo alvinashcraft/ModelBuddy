@@ -17,7 +17,7 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 
 ## Prerequisites
 
-- Windows 10 (build 26100) or later
+- Windows 10 (version 1809) or later
 - [Foundry Local](https://github.com/microsoft/Foundry-Local) runtime:
 
 ```powershell
