@@ -75,8 +75,27 @@ public partial class FoundryService : IFoundryService
                 return true;
             }
 
-            _logger?.LogWarning("Foundry Local not responding at {Endpoint}", endpoint);
-            Debug.WriteLine($"FoundryService: service not responding at {endpoint}");
+            // Service not running — try to start it
+            _logger?.LogInformation("Foundry Local not responding, attempting to start the service...");
+            Debug.WriteLine("FoundryService: service not responding, starting it...");
+
+            if (await TryStartServiceAsync(cancellationToken))
+            {
+                // Re-detect endpoint after starting (port may have changed)
+                endpoint = await DetectEndpointAsync();
+                Debug.WriteLine($"FoundryService: post-start endpoint {endpoint}");
+
+                if (await IsServiceRunningAsync(endpoint, cancellationToken))
+                {
+                    _cachedEndpoint = endpoint;
+                    _logger?.LogInformation("Connected to Foundry Local at {Endpoint} after starting service", endpoint);
+                    Debug.WriteLine($"FoundryService: connected after start to {endpoint}");
+                    return true;
+                }
+            }
+
+            _logger?.LogWarning("Foundry Local could not be started or connected");
+            Debug.WriteLine("FoundryService: failed to start or connect");
             return false;
         }
         catch (Exception ex)
@@ -547,6 +566,71 @@ public partial class FoundryService : IFoundryService
         }
 
         return DefaultEndpoint;
+    }
+
+    /// <summary>
+    /// Attempts to start the Foundry Local service and waits for it to become responsive.
+    /// </summary>
+    /// <returns>True if the service was started successfully.</returns>
+    private async Task<bool> TryStartServiceAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = "foundry",
+                Arguments = "service start",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(processInfo);
+            if (process is null)
+            {
+                _logger?.LogWarning("Failed to start foundry service process");
+                return false;
+            }
+
+            // Wait up to 15 seconds for the process to exit
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(15));
+
+            try
+            {
+                await process.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Process still running is fine — service may be starting in background
+            }
+
+            Debug.WriteLine($"FoundryService: foundry service start exited with code {(process.HasExited ? process.ExitCode : -1)}");
+
+            // Give the service a moment to bind its port, then poll for readiness
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+
+                var endpoint = await DetectEndpointAsync();
+                if (await IsServiceRunningAsync(endpoint, cancellationToken))
+                {
+                    _logger?.LogInformation("Foundry Local service started on attempt {Attempt}", attempt + 1);
+                    return true;
+                }
+
+                Debug.WriteLine($"FoundryService: waiting for service (attempt {attempt + 1}/5)...");
+            }
+
+            return false;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger?.LogWarning(ex, "Failed to start Foundry Local service");
+            Debug.WriteLine($"FoundryService: error starting service: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
