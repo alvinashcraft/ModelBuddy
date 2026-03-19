@@ -16,6 +16,7 @@ namespace ModelBuddy.Services;
 public partial class FoundryService : IFoundryService
 {
     private const string DefaultEndpoint = "http://127.0.0.1:5272";
+    private static readonly int[] PortsToScan = [5272, 5273, 5274, 5275, 5276];
     private readonly HttpClient _httpClient;
     private readonly ILogger<FoundryService>? _logger;
     private readonly ISettingsService _settingsService;
@@ -62,12 +63,9 @@ public partial class FoundryService : IFoundryService
                 _logger?.LogWarning("Custom endpoint {Endpoint} not responding, falling back to auto-detect", customEndpoint);
             }
 
-            // Detect the endpoint from 'foundry service status' (or use default)
-            var endpoint = await DetectEndpointAsync();
-            Debug.WriteLine($"FoundryService: detected endpoint {endpoint}");
-
-            // Verify the service is actually running
-            if (await IsServiceRunningAsync(endpoint, cancellationToken))
+            // Try to detect a running service (CLI status + port scan)
+            var endpoint = await DetectEndpointAsync(cancellationToken);
+            if (endpoint is not null)
             {
                 _cachedEndpoint = endpoint;
                 _logger?.LogInformation("Connected to Foundry Local at {Endpoint}", endpoint);
@@ -76,22 +74,16 @@ public partial class FoundryService : IFoundryService
             }
 
             // Service not running — try to start it
-            _logger?.LogInformation("Foundry Local not responding, attempting to start the service...");
-            Debug.WriteLine("FoundryService: service not responding, starting it...");
+            _logger?.LogInformation("Foundry Local not detected, attempting to start the service...");
+            Debug.WriteLine("FoundryService: no service detected, starting it...");
 
-            if (await TryStartServiceAsync(cancellationToken))
+            endpoint = await TryStartServiceAsync(cancellationToken);
+            if (endpoint is not null)
             {
-                // Re-detect endpoint after starting (port may have changed)
-                endpoint = await DetectEndpointAsync();
-                Debug.WriteLine($"FoundryService: post-start endpoint {endpoint}");
-
-                if (await IsServiceRunningAsync(endpoint, cancellationToken))
-                {
-                    _cachedEndpoint = endpoint;
-                    _logger?.LogInformation("Connected to Foundry Local at {Endpoint} after starting service", endpoint);
-                    Debug.WriteLine($"FoundryService: connected after start to {endpoint}");
-                    return true;
-                }
+                _cachedEndpoint = endpoint;
+                _logger?.LogInformation("Connected to Foundry Local at {Endpoint} after starting service", endpoint);
+                Debug.WriteLine($"FoundryService: connected after start to {endpoint}");
+                return true;
             }
 
             _logger?.LogWarning("Foundry Local could not be started or connected");
@@ -526,60 +518,35 @@ public partial class FoundryService : IFoundryService
     private static partial Regex EndpointUrlRegex();
 
     /// <summary>
-    /// Detects the actual Foundry Local endpoint by running 'foundry service status'.
+    /// Resolves the Foundry Local CLI path, checking well-known locations.
     /// </summary>
-    /// <returns>The detected endpoint URL, or the default endpoint if detection fails.</returns>
-    private static async Task<string> DetectEndpointAsync()
+    private static string GetFoundryCliPath()
     {
-        try
+        // The Foundry CLI is a Store/MSIX app installed under WindowsApps
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var windowsAppsPath = Path.Combine(localAppData, "Microsoft", "WindowsApps", "foundry.exe");
+
+        if (File.Exists(windowsAppsPath))
         {
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = "foundry",
-                Arguments = "service status",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(processInfo);
-            if (process is not null)
-            {
-                var output = await process.StandardOutput.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                Debug.WriteLine($"FoundryService: foundry service status: {output}");
-
-                // Extract the URL from the output (e.g., "http://127.0.0.1:51600")
-                var urlMatch = EndpointUrlRegex().Match(output);
-                if (urlMatch.Success)
-                {
-                    Debug.WriteLine($"FoundryService: detected endpoint: {urlMatch.Value}");
-                    return urlMatch.Value;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"FoundryService: error detecting endpoint: {ex.Message}");
+            return windowsAppsPath;
         }
 
-        return DefaultEndpoint;
+        // Fall back to bare name (relies on PATH)
+        return "foundry";
     }
 
     /// <summary>
-    /// Attempts to start the Foundry Local service and waits for it to become responsive.
+    /// Runs a Foundry CLI command and returns its combined stdout+stderr output.
     /// </summary>
-    /// <returns>True if the service was started successfully.</returns>
-    private async Task<bool> TryStartServiceAsync(CancellationToken cancellationToken)
+    private static async Task<(string Output, int ExitCode)> RunFoundryCliAsync(
+        string arguments, int timeoutSeconds = 15)
     {
         try
         {
             var processInfo = new ProcessStartInfo
             {
-                FileName = "foundry",
-                Arguments = "service start",
+                FileName = GetFoundryCliPath(),
+                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -589,52 +556,126 @@ public partial class FoundryService : IFoundryService
             using var process = Process.Start(processInfo);
             if (process is null)
             {
-                _logger?.LogWarning("Failed to start foundry service process");
-                return false;
+                return ("", -1);
             }
 
-            // Wait up to 15 seconds for the process to exit
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(15));
+            // Read both streams concurrently to avoid pipe deadlocks
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
 
-            try
+            // Wait for everything to complete within the timeout
+            var allDone = Task.WhenAll(stdoutTask, stderrTask, process.WaitForExitAsync());
+            if (await Task.WhenAny(allDone, Task.Delay(TimeSpan.FromSeconds(timeoutSeconds))) != allDone)
             {
-                await process.WaitForExitAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Process still running is fine — service may be starting in background
-            }
+                // Timed out — kill process and don't await the stream tasks
+                try { process.Kill(entireProcessTree: true); } catch { }
+                Debug.WriteLine($"FoundryService: CLI '{arguments}' timed out after {timeoutSeconds}s");
 
-            Debug.WriteLine($"FoundryService: foundry service start exited with code {(process.HasExited ? process.ExitCode : -1)}");
-
-            // Give the service a moment to bind its port, then poll for readiness
-            for (var attempt = 0; attempt < 5; attempt++)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
-
-                var endpoint = await DetectEndpointAsync();
-                if (await IsServiceRunningAsync(endpoint, cancellationToken))
-                {
-                    _logger?.LogInformation("Foundry Local service started on attempt {Attempt}", attempt + 1);
-                    return true;
-                }
-
-                Debug.WriteLine($"FoundryService: waiting for service (attempt {attempt + 1}/5)...");
+                // Return whatever we got so far (may be partial)
+                var partialStdout = stdoutTask.IsCompleted ? stdoutTask.Result : "";
+                var partialStderr = stderrTask.IsCompleted ? stderrTask.Result : "";
+                return ($"{partialStdout}\n{partialStderr}".Trim(), -1);
             }
 
-            return false;
+            var combined = $"{stdoutTask.Result}\n{stderrTask.Result}".Trim();
+            Debug.WriteLine($"FoundryService: CLI '{arguments}' output: {combined}");
+            return (combined, process.ExitCode);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Failed to start Foundry Local service");
-            Debug.WriteLine($"FoundryService: error starting service: {ex.Message}");
-            return false;
+            Debug.WriteLine($"FoundryService: CLI '{arguments}' error: {ex.Message}");
+            return ("", -1);
         }
     }
 
     /// <summary>
+    /// Detects the actual Foundry Local endpoint by running 'foundry service status',
+    /// then falls back to scanning common ports.
+    /// </summary>
+    /// <returns>The detected endpoint URL, or the default endpoint if detection fails.</returns>
+    private async Task<string?> DetectEndpointAsync(CancellationToken cancellationToken = default)
+    {
+        // Strategy 1: Parse endpoint from CLI output
+        var (output, _) = await RunFoundryCliAsync("service status");
+        if (!string.IsNullOrWhiteSpace(output))
+        {
+            var urlMatch = EndpointUrlRegex().Match(output);
+            if (urlMatch.Success)
+            {
+                var endpoint = urlMatch.Value;
+                Debug.WriteLine($"FoundryService: CLI detected endpoint: {endpoint}");
+                return endpoint;
+            }
+        }
+
+        // Strategy 2: Scan well-known ports
+        Debug.WriteLine("FoundryService: CLI detection failed, scanning ports...");
+        foreach (var port in PortsToScan)
+        {
+            var endpoint = $"http://127.0.0.1:{port}";
+            if (await IsServiceRunningAsync(endpoint, cancellationToken))
+            {
+                Debug.WriteLine($"FoundryService: found service on port {port}");
+                return endpoint;
+            }
+        }
+
+        Debug.WriteLine("FoundryService: no running service found");
+        return null;
+    }
+
+    /// <summary>
+    /// Attempts to start the Foundry Local service and waits for it to become responsive.
+    /// </summary>
+    /// <returns>The endpoint if the service was started successfully; otherwise null.</returns>
+    private async Task<string?> TryStartServiceAsync(CancellationToken cancellationToken)
+    {
+        _logger?.LogInformation("Attempting to start Foundry Local service...");
+
+        // Fire off the start command — don't wait for it to complete since it may
+        // run as a foreground process that doesn't exit until the service stops.
+        try
+        {
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = GetFoundryCliPath(),
+                Arguments = "service start",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = false,
+                RedirectStandardError = false
+            };
+            Process.Start(processInfo);
+            Debug.WriteLine("FoundryService: launched 'foundry service start'");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to launch foundry service start");
+            Debug.WriteLine($"FoundryService: failed to launch service start: {ex.Message}");
+            return null;
+        }
+
+        // Poll for readiness — the service may take a few seconds to bind a port
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+
+            var endpoint = await DetectEndpointAsync(cancellationToken);
+            if (endpoint is not null)
+            {
+                _logger?.LogInformation("Foundry Local started on attempt {Attempt} at {Endpoint}", attempt + 1, endpoint);
+                return endpoint;
+            }
+
+            Debug.WriteLine($"FoundryService: waiting for service (attempt {attempt + 1}/10)...");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Checks if the Foundry Local service is running at the given endpoint.
+    /// Uses /openai/status which works even when no models are downloaded.
     /// </summary>
     private async Task<bool> IsServiceRunningAsync(string endpoint, CancellationToken cancellationToken = default)
     {
@@ -643,7 +684,7 @@ public partial class FoundryService : IFoundryService
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(3));
 
-            var response = await _httpClient.GetAsync($"{endpoint}/openai/models", cts.Token);
+            var response = await _httpClient.GetAsync($"{endpoint}/openai/status", cts.Token);
             Debug.WriteLine($"FoundryService: service check at {endpoint}: {response.StatusCode}");
             return response.IsSuccessStatusCode;
         }
