@@ -86,8 +86,8 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         VerticalAlignment="Center"/>
                     <HyperlinkButton 
-                        Content="Reconnect"
-                        Command="{Binding ReconnectCommand}"
+                        Content="Is Foundry Local installed?"
+                        NavigateUri="https://learn.microsoft.com/azure/foundry-local/get-started"
                         FontSize="12"
                         Padding="4,0"
                         VerticalAlignment="Center"
@@ -98,11 +98,11 @@
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         VerticalAlignment="Center"
                         Visibility="{Binding CanReconnect, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <HyperlinkButton 
-                        Content="Get started with Foundry Local"
-                        NavigateUri="https://learn.microsoft.com/azure/foundry-local/get-started"
+                    <Button 
+                        Content="Reconnect"
+                        Command="{Binding ReconnectCommand}"
                         FontSize="12"
-                        Padding="4,0"
+                        Padding="8,2"
                         VerticalAlignment="Center"
                         Visibility="{Binding CanReconnect, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     <ProgressRing 

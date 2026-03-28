@@ -94,6 +94,11 @@ public partial class AppViewModel : ObservableObject
             var connected = await _foundryService.InitializeAsync();
             System.Diagnostics.Debug.WriteLine($"AppViewModel: InitializeAsync returned {connected}, endpoint={_foundryService.Endpoint}");
             UpdateConnectionState(connected);
+
+            if (!connected)
+            {
+                ConnectionStatus = "Not connected";
+            }
         }
         catch (Exception ex)
         {
@@ -131,11 +136,16 @@ public partial class AppViewModel : ObservableObject
             var connected = await _foundryService.ReconnectAsync();
             System.Diagnostics.Debug.WriteLine($"AppViewModel: ReconnectAsync returned {connected}, endpoint={_foundryService.Endpoint}");
             UpdateConnectionState(connected);
+
+            if (!connected)
+            {
+                ConnectionStatus = "Not connected";
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AppViewModel: ReconnectAsync error {ex}");
-            ConnectionStatus = $"Error: {ex.Message}";
+            ConnectionStatus = $"Connection failed: {ex.Message}";
             IsConnected = false;
             Endpoint = null;
         }
