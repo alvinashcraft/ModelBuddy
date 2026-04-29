@@ -400,40 +400,50 @@ public partial class FoundryService : IFoundryService
             throw new InvalidOperationException("Foundry Local is not connected.");
         }
 
-        _logger?.LogInformation("Attempting to delete model {Model} using CLI", modelId);
+        _logger?.LogInformation("Attempting to delete model {Model}", modelId);
         Debug.WriteLine($"FoundryService: DeleteModelAsync - Deleting {modelId}");
+
+        // The modelId might have a variant suffix like "qwen3-0.6b-generic-cpu:4"
+        // Extract the base name for deletion (foundry expects just the model name)
+        var baseName = modelId;
+        if (modelId.Contains(':'))
+        {
+            baseName = modelId.Substring(0, modelId.IndexOf(':'));
+            _logger?.LogInformation("Extracted base model name: {BaseName} from {ModelId}", baseName, modelId);
+            Debug.WriteLine($"FoundryService: DeleteModelAsync - Extracted base name: {baseName} from {modelId}");
+        }
 
         try
         {
-            // Use the foundry CLI to delete the model
-            // This works reliably on all hardware (CPU, GPU, NPU) including AMD NPU
+            // Use the foundry CLI cache remove command to delete the model
+            // Per official docs: foundry cache remove <model>
             var cliPath = GetFoundryCliPath();
             if (string.IsNullOrEmpty(cliPath))
             {
                 _logger?.LogWarning("Foundry CLI not found, attempting REST API fallback");
-                await DeleteModelViaRestApiAsync(modelId, cancellationToken);
+                await DeleteModelViaRestApiAsync(baseName, cancellationToken);
                 return;
             }
 
-            var (output, exitCode) = await RunFoundryCliAsync($"model delete {modelId}");
+            var (output, exitCode) = await RunFoundryCliAsync($"cache remove {baseName}");
             
             // Check for success — CLI returns 0 on success
             if (exitCode == 0)
             {
-                _logger?.LogInformation("Model {Model} deleted via CLI", modelId);
-                Debug.WriteLine($"FoundryService: DeleteModelAsync - Successfully deleted {modelId}");
+                _logger?.LogInformation("Model {Model} deleted via CLI cache remove", baseName);
+                Debug.WriteLine($"FoundryService: DeleteModelAsync - Successfully deleted {baseName}");
 
                 // Verify deletion by checking if model still appears in downloaded list
                 var stillDownloaded = await GetDownloadedModelNamesAsync(cancellationToken);
-                if (stillDownloaded.Contains(modelId))
+                if (stillDownloaded.Contains(baseName))
                 {
-                    _logger?.LogWarning("Model {Model} still appears in downloaded list after delete", modelId);
-                    Debug.WriteLine($"FoundryService: DeleteModelAsync - WARNING: {modelId} still in cache");
+                    _logger?.LogWarning("Model {Model} still appears in cache after delete", baseName);
+                    Debug.WriteLine($"FoundryService: DeleteModelAsync - WARNING: {baseName} still in cache");
                 }
                 else
                 {
-                    _logger?.LogInformation("Model {Model} confirmed removed from cache", modelId);
-                    Debug.WriteLine($"FoundryService: DeleteModelAsync - Verified: {modelId} removed");
+                    _logger?.LogInformation("Model {Model} confirmed removed from cache", baseName);
+                    Debug.WriteLine($"FoundryService: DeleteModelAsync - Verified: {baseName} removed");
                 }
                 return;
             }
@@ -443,7 +453,7 @@ public partial class FoundryService : IFoundryService
             Debug.WriteLine($"FoundryService: DeleteModelAsync - CLI failed with code {exitCode}: {output}");
             
             // Fallback to REST API if CLI fails
-            await DeleteModelViaRestApiAsync(modelId, cancellationToken);
+            await DeleteModelViaRestApiAsync(baseName, cancellationToken);
         }
         catch (Exception ex) when (!(ex is InvalidOperationException))
         {
@@ -453,7 +463,7 @@ public partial class FoundryService : IFoundryService
             // Fallback to REST API if CLI throws
             try
             {
-                await DeleteModelViaRestApiAsync(modelId, cancellationToken);
+                await DeleteModelViaRestApiAsync(baseName, cancellationToken);
             }
             catch (Exception restEx)
             {
@@ -481,6 +491,19 @@ public partial class FoundryService : IFoundryService
 
         _logger?.LogInformation("Model {Model} deleted via REST API", modelId);
         Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - Success");
+
+        // Verify deletion by checking if model still appears in downloaded list
+        var stillDownloaded = await GetDownloadedModelNamesAsync(cancellationToken);
+        if (stillDownloaded.Contains(modelId))
+        {
+            _logger?.LogWarning("Model {Model} still appears in cache after delete", modelId);
+            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - WARNING: {modelId} still in cache");
+        }
+        else
+        {
+            _logger?.LogInformation("Model {Model} confirmed removed from cache", modelId);
+            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - Verified: {modelId} removed");
+        }
     }
 
     /// <inheritdoc />
