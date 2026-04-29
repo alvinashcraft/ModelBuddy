@@ -421,11 +421,11 @@ public partial class FoundryService : IFoundryService
             if (string.IsNullOrEmpty(cliPath))
             {
                 _logger?.LogWarning("Foundry CLI not found, attempting REST API fallback");
-                await DeleteModelViaRestApiAsync(baseName, cancellationToken);
+                await DeleteModelViaRestApiAsync(baseName, modelId, cancellationToken);
                 return;
             }
 
-            var (output, exitCode) = await RunFoundryCliAsync($"cache remove {baseName}");
+            var (output, exitCode) = await RunFoundryCliAsync(["cache", "remove", baseName, "--yes"]);
             
             // Check for success — CLI returns 0 on success
             if (exitCode == 0)
@@ -435,7 +435,7 @@ public partial class FoundryService : IFoundryService
 
                 // Verify deletion by checking if model still appears in downloaded list
                 var stillDownloaded = await GetDownloadedModelNamesAsync(cancellationToken);
-                if (stillDownloaded.Contains(baseName))
+                if (ContainsCachedModel(stillDownloaded, modelId, baseName))
                 {
                     _logger?.LogWarning("Model {Model} still appears in cache after delete", baseName);
                     Debug.WriteLine($"FoundryService: DeleteModelAsync - WARNING: {baseName} still in cache");
@@ -453,7 +453,7 @@ public partial class FoundryService : IFoundryService
             Debug.WriteLine($"FoundryService: DeleteModelAsync - CLI failed with code {exitCode}: {output}");
             
             // Fallback to REST API if CLI fails
-            await DeleteModelViaRestApiAsync(baseName, cancellationToken);
+            await DeleteModelViaRestApiAsync(baseName, modelId, cancellationToken);
         }
         catch (Exception ex) when (!(ex is InvalidOperationException))
         {
@@ -463,7 +463,7 @@ public partial class FoundryService : IFoundryService
             // Fallback to REST API if CLI throws
             try
             {
-                await DeleteModelViaRestApiAsync(baseName, cancellationToken);
+                await DeleteModelViaRestApiAsync(baseName, modelId, cancellationToken);
             }
             catch (Exception restEx)
             {
@@ -473,9 +473,12 @@ public partial class FoundryService : IFoundryService
         }
     }
 
-    private async Task DeleteModelViaRestApiAsync(string modelId, CancellationToken cancellationToken)
+    private async Task DeleteModelViaRestApiAsync(
+        string deleteModelId,
+        string requestedModelId,
+        CancellationToken cancellationToken)
     {
-        var url = $"{_cachedEndpoint}/openai/models/{Uri.EscapeDataString(modelId)}";
+        var url = $"{_cachedEndpoint}/openai/models/{Uri.EscapeDataString(deleteModelId)}";
         _logger?.LogInformation("Attempting model deletion via REST API at {Url}", url);
         Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - DELETE {url}");
 
@@ -489,21 +492,35 @@ public partial class FoundryService : IFoundryService
             throw new InvalidOperationException($"REST API delete failed: HTTP {response.StatusCode} — {errBody}");
         }
 
-        _logger?.LogInformation("Model {Model} deleted via REST API", modelId);
+        _logger?.LogInformation("Model {Model} deleted via REST API", deleteModelId);
         Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - Success");
 
         // Verify deletion by checking if model still appears in downloaded list
         var stillDownloaded = await GetDownloadedModelNamesAsync(cancellationToken);
-        if (stillDownloaded.Contains(modelId))
+        if (ContainsCachedModel(stillDownloaded, requestedModelId, deleteModelId))
         {
-            _logger?.LogWarning("Model {Model} still appears in cache after delete", modelId);
-            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - WARNING: {modelId} still in cache");
+            _logger?.LogWarning("Model {Model} still appears in cache after delete", deleteModelId);
+            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - WARNING: {deleteModelId} still in cache");
         }
         else
         {
-            _logger?.LogInformation("Model {Model} confirmed removed from cache", modelId);
-            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - Verified: {modelId} removed");
+            _logger?.LogInformation("Model {Model} confirmed removed from cache", deleteModelId);
+            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - Verified: {deleteModelId} removed");
         }
+    }
+
+    private static bool ContainsCachedModel(
+        IReadOnlySet<string> cachedModelNames,
+        string requestedModelId,
+        string deleteModelId)
+    {
+        if (cachedModelNames.Contains(requestedModelId) || cachedModelNames.Contains(deleteModelId))
+        {
+            return true;
+        }
+
+        var variantPrefix = $"{deleteModelId}:";
+        return cachedModelNames.Any(name => name.StartsWith(variantPrefix, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />
@@ -632,19 +649,23 @@ public partial class FoundryService : IFoundryService
     /// Runs a Foundry CLI command and returns its combined stdout+stderr output.
     /// </summary>
     private static async Task<(string Output, int ExitCode)> RunFoundryCliAsync(
-        string arguments, int timeoutSeconds = 15)
+        IReadOnlyList<string> arguments, int timeoutSeconds = 15)
     {
         try
         {
             var processInfo = new ProcessStartInfo
             {
                 FileName = GetFoundryCliPath(),
-                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            foreach (var argument in arguments)
+            {
+                processInfo.ArgumentList.Add(argument);
+            }
 
             using var process = Process.Start(processInfo);
             if (process is null)
@@ -662,7 +683,7 @@ public partial class FoundryService : IFoundryService
             {
                 // Timed out — kill process and don't await the stream tasks
                 try { process.Kill(entireProcessTree: true); } catch { }
-                Debug.WriteLine($"FoundryService: CLI '{arguments}' timed out after {timeoutSeconds}s");
+                Debug.WriteLine($"FoundryService: CLI '{FormatCliArguments(arguments)}' timed out after {timeoutSeconds}s");
 
                 // Return whatever we got so far (may be partial)
                 var partialStdout = stdoutTask.IsCompleted ? stdoutTask.Result : "";
@@ -671,15 +692,19 @@ public partial class FoundryService : IFoundryService
             }
 
             var combined = $"{stdoutTask.Result}\n{stderrTask.Result}".Trim();
-            Debug.WriteLine($"FoundryService: CLI '{arguments}' output: {combined}");
+            Debug.WriteLine($"FoundryService: CLI '{FormatCliArguments(arguments)}' output: {combined}");
             return (combined, process.ExitCode);
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"FoundryService: CLI '{arguments}' error: {ex.Message}");
+            Debug.WriteLine($"FoundryService: CLI '{FormatCliArguments(arguments)}' error: {ex.Message}");
             return ("", -1);
         }
     }
+
+    private static string FormatCliArguments(IReadOnlyList<string> arguments) =>
+        string.Join(" ", arguments.Select(argument =>
+            argument.Contains(' ') ? $"\"{argument}\"" : argument));
 
     /// <summary>
     /// Detects the actual Foundry Local endpoint by running 'foundry service status',
@@ -689,7 +714,7 @@ public partial class FoundryService : IFoundryService
     private async Task<string?> DetectEndpointAsync(CancellationToken cancellationToken = default)
     {
         // Strategy 1: Parse endpoint from CLI output
-        var (output, _) = await RunFoundryCliAsync("service status");
+        var (output, _) = await RunFoundryCliAsync(["service", "status"]);
         if (!string.IsNullOrWhiteSpace(output))
         {
             var urlMatch = EndpointUrlRegex().Match(output);
