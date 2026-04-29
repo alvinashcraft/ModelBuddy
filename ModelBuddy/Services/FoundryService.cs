@@ -16,6 +16,8 @@ namespace ModelBuddy.Services;
 public partial class FoundryService : IFoundryService
 {
     private const string DefaultEndpoint = "http://127.0.0.1:5272";
+    private static readonly TimeSpan DefaultCliTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan CacheRemoveCliTimeout = TimeSpan.FromMinutes(5);
     private static readonly int[] PortsToScan = [5272, 5273, 5274, 5275, 5276];
     private readonly HttpClient _httpClient;
     private readonly ILogger<FoundryService>? _logger;
@@ -417,15 +419,10 @@ public partial class FoundryService : IFoundryService
         {
             // Use the foundry CLI cache remove command to delete the model
             // Per official docs: foundry cache remove <model>
-            var cliPath = GetFoundryCliPath();
-            if (string.IsNullOrEmpty(cliPath))
-            {
-                _logger?.LogWarning("Foundry CLI not found, attempting REST API fallback");
-                await DeleteModelViaRestApiAsync(baseName, modelId, cancellationToken);
-                return;
-            }
-
-            var (output, exitCode) = await RunFoundryCliAsync(["cache", "remove", baseName, "--yes"]);
+            var (output, exitCode) = await RunFoundryCliAsync(
+                ["cache", "remove", baseName, "--yes"],
+                CacheRemoveCliTimeout,
+                cancellationToken);
             
             // Check for success — CLI returns 0 on success
             if (exitCode == 0)
@@ -455,7 +452,7 @@ public partial class FoundryService : IFoundryService
             // Fallback to REST API if CLI fails
             await DeleteModelViaRestApiAsync(baseName, modelId, cancellationToken);
         }
-        catch (Exception ex) when (!(ex is InvalidOperationException))
+        catch (Exception ex) when (ex is not InvalidOperationException and not OperationCanceledException)
         {
             _logger?.LogWarning(ex, "CLI deletion failed, attempting REST API fallback");
             Debug.WriteLine($"FoundryService: DeleteModelAsync - CLI error, trying REST API: {ex.Message}");
@@ -649,8 +646,13 @@ public partial class FoundryService : IFoundryService
     /// Runs a Foundry CLI command and returns its combined stdout+stderr output.
     /// </summary>
     private static async Task<(string Output, int ExitCode)> RunFoundryCliAsync(
-        IReadOnlyList<string> arguments, int timeoutSeconds = 15)
+        IReadOnlyList<string> arguments,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
     {
+        var formattedArguments = FormatCliArguments(arguments);
+        var effectiveTimeout = timeout ?? DefaultCliTimeout;
+
         try
         {
             var processInfo = new ProcessStartInfo
@@ -677,30 +679,64 @@ public partial class FoundryService : IFoundryService
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
 
-            // Wait for everything to complete within the timeout
-            var allDone = Task.WhenAll(stdoutTask, stderrTask, process.WaitForExitAsync());
-            if (await Task.WhenAny(allDone, Task.Delay(TimeSpan.FromSeconds(timeoutSeconds))) != allDone)
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(effectiveTimeout);
+
+            try
             {
-                // Timed out — kill process and don't await the stream tasks
-                try { process.Kill(entireProcessTree: true); } catch { }
-                Debug.WriteLine($"FoundryService: CLI '{FormatCliArguments(arguments)}' timed out after {timeoutSeconds}s");
+                await process.WaitForExitAsync(timeoutCts.Token);
+                await Task.WhenAll(stdoutTask, stderrTask);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                KillProcessTree(process, formattedArguments, "cancelled");
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                KillProcessTree(process, formattedArguments, "timed out");
+                Debug.WriteLine($"FoundryService: CLI '{formattedArguments}' timed out after {effectiveTimeout}");
 
                 // Return whatever we got so far (may be partial)
-                var partialStdout = stdoutTask.IsCompleted ? stdoutTask.Result : "";
-                var partialStderr = stderrTask.IsCompleted ? stderrTask.Result : "";
-                return ($"{partialStdout}\n{partialStderr}".Trim(), -1);
+                var partialStdout = GetCompletedOutput(stdoutTask);
+                var partialStderr = GetCompletedOutput(stderrTask);
+                var partialOutput = $"{partialStdout}\n{partialStderr}".Trim();
+                var timeoutMessage = $"foundry {formattedArguments} timed out after {effectiveTimeout}.";
+                return (string.IsNullOrWhiteSpace(partialOutput) ? timeoutMessage : $"{timeoutMessage}\n{partialOutput}", -1);
             }
 
             var combined = $"{stdoutTask.Result}\n{stderrTask.Result}".Trim();
-            Debug.WriteLine($"FoundryService: CLI '{FormatCliArguments(arguments)}' output: {combined}");
+            Debug.WriteLine($"FoundryService: CLI '{formattedArguments}' output: {combined}");
             return (combined, process.ExitCode);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"FoundryService: CLI '{FormatCliArguments(arguments)}' error: {ex.Message}");
+            Debug.WriteLine($"FoundryService: CLI '{formattedArguments}' error: {ex.Message}");
             return ("", -1);
         }
     }
+
+    private static void KillProcessTree(Process process, string formattedArguments, string reason)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"FoundryService: failed to terminate CLI '{formattedArguments}' after it was {reason}: {ex.Message}");
+        }
+    }
+
+    private static string GetCompletedOutput(Task<string> outputTask) =>
+        outputTask.Status == TaskStatus.RanToCompletion ? outputTask.Result : "";
 
     private static string FormatCliArguments(IReadOnlyList<string> arguments) =>
         string.Join(" ", arguments.Select(argument =>
@@ -714,7 +750,7 @@ public partial class FoundryService : IFoundryService
     private async Task<string?> DetectEndpointAsync(CancellationToken cancellationToken = default)
     {
         // Strategy 1: Parse endpoint from CLI output
-        var (output, _) = await RunFoundryCliAsync(["service", "status"]);
+        var (output, _) = await RunFoundryCliAsync(["service", "status"], cancellationToken: cancellationToken);
         if (!string.IsNullOrWhiteSpace(output))
         {
             var urlMatch = EndpointUrlRegex().Match(output);
