@@ -11,7 +11,7 @@
   <Identity
     Name="20774Alvinitech.ModelBuddy"
     Publisher="CN=EAE06486-0370-4160-9E62-540EA1588D22"
-    Version="1.0.0.1" />
+    Version="1.0.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="9e8fa498-7b2e-4a0c-b0f6-3c2d5e1a4b7f" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

@@ -19,6 +19,11 @@ dotnet build ModelBuddy\ModelBuddy.csproj -p:Platform=x86
 
 The solution file is `ModelBuddy.slnx` (XML-based solution format). Supported platforms: x64, x86, ARM64.
 
+## Microsoft Store Packaging
+
+- Store-submitted MSIX packages must use an app manifest version whose revision component is `0` (for example, `1.0.1.0`, not `1.0.0.1`).
+- Increment the major, minor, or build component for each Store submission and keep the fourth component at `0`.
+
 ## Architecture
 
 - **Single-project MSIX packaging** — the app project handles both build and packaging (no separate `.wapproj`).
