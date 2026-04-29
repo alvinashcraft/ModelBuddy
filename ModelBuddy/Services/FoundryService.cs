@@ -400,17 +400,87 @@ public partial class FoundryService : IFoundryService
             throw new InvalidOperationException("Foundry Local is not connected.");
         }
 
-        var response = await _httpClient.DeleteAsync(
-            $"{_cachedEndpoint}/openai/models/{Uri.EscapeDataString(modelId)}",
-            cancellationToken);
+        _logger?.LogInformation("Attempting to delete model {Model} using CLI", modelId);
+        Debug.WriteLine($"FoundryService: DeleteModelAsync - Deleting {modelId}");
+
+        try
+        {
+            // Use the foundry CLI to delete the model
+            // This works reliably on all hardware (CPU, GPU, NPU) including AMD NPU
+            var cliPath = GetFoundryCliPath();
+            if (string.IsNullOrEmpty(cliPath))
+            {
+                _logger?.LogWarning("Foundry CLI not found, attempting REST API fallback");
+                await DeleteModelViaRestApiAsync(modelId, cancellationToken);
+                return;
+            }
+
+            var (output, exitCode) = await RunFoundryCliAsync($"model delete {modelId}");
+            
+            // Check for success — CLI returns 0 on success
+            if (exitCode == 0)
+            {
+                _logger?.LogInformation("Model {Model} deleted via CLI", modelId);
+                Debug.WriteLine($"FoundryService: DeleteModelAsync - Successfully deleted {modelId}");
+
+                // Verify deletion by checking if model still appears in downloaded list
+                var stillDownloaded = await GetDownloadedModelNamesAsync(cancellationToken);
+                if (stillDownloaded.Contains(modelId))
+                {
+                    _logger?.LogWarning("Model {Model} still appears in downloaded list after delete", modelId);
+                    Debug.WriteLine($"FoundryService: DeleteModelAsync - WARNING: {modelId} still in cache");
+                }
+                else
+                {
+                    _logger?.LogInformation("Model {Model} confirmed removed from cache", modelId);
+                    Debug.WriteLine($"FoundryService: DeleteModelAsync - Verified: {modelId} removed");
+                }
+                return;
+            }
+
+            // If exit code indicates failure, log and try REST API fallback
+            _logger?.LogWarning("Model deletion CLI command failed with exit code {ExitCode}: {Output}", exitCode, output);
+            Debug.WriteLine($"FoundryService: DeleteModelAsync - CLI failed with code {exitCode}: {output}");
+            
+            // Fallback to REST API if CLI fails
+            await DeleteModelViaRestApiAsync(modelId, cancellationToken);
+        }
+        catch (Exception ex) when (!(ex is InvalidOperationException))
+        {
+            _logger?.LogWarning(ex, "CLI deletion failed, attempting REST API fallback");
+            Debug.WriteLine($"FoundryService: DeleteModelAsync - CLI error, trying REST API: {ex.Message}");
+            
+            // Fallback to REST API if CLI throws
+            try
+            {
+                await DeleteModelViaRestApiAsync(modelId, cancellationToken);
+            }
+            catch (Exception restEx)
+            {
+                _logger?.LogError(restEx, "Both CLI and REST API deletion failed for {Model}", modelId);
+                throw new InvalidOperationException($"Model deletion failed via both CLI and REST API: {restEx.Message}", restEx);
+            }
+        }
+    }
+
+    private async Task DeleteModelViaRestApiAsync(string modelId, CancellationToken cancellationToken)
+    {
+        var url = $"{_cachedEndpoint}/openai/models/{Uri.EscapeDataString(modelId)}";
+        _logger?.LogInformation("Attempting model deletion via REST API at {Url}", url);
+        Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - DELETE {url}");
+
+        var response = await _httpClient.DeleteAsync(url, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
             var errBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Delete failed: HTTP {response.StatusCode} — {errBody}");
+            _logger?.LogError("REST API delete failed with status {Status}: {Error}", response.StatusCode, errBody);
+            Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - HTTP {response.StatusCode}: {errBody}");
+            throw new InvalidOperationException($"REST API delete failed: HTTP {response.StatusCode} — {errBody}");
         }
 
-        _logger?.LogInformation("Model {Model} deleted", modelId);
+        _logger?.LogInformation("Model {Model} deleted via REST API", modelId);
+        Debug.WriteLine($"FoundryService: DeleteModelViaRestApiAsync - Success");
     }
 
     /// <inheritdoc />
