@@ -184,6 +184,12 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
     }
 
     /// <summary>
+    /// Gets or sets the current download progress (0-100).
+    /// </summary>
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    /// <summary>
     /// Downloads the selected model.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanDownloadModel))]
@@ -196,13 +202,22 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
 
         var modelToDownload = SelectedModel;
         IsLoading = true;
+        DownloadProgress = 0;
         StatusMessage = $"Downloading {modelToDownload.DisplayName}...";
         modelToDownload.Status = ModelStatus.Downloading;
 
         try
         {
-            await _foundryService.DownloadModelAsync(modelToDownload.Alias);
+            // Create a progress reporter that updates status message with percentage
+            var progressReporter = new Progress<double>(percent =>
+            {
+                DownloadProgress = percent;
+                StatusMessage = $"Downloading {modelToDownload.DisplayName}... {percent:F1}%";
+            });
+
+            await _foundryService.DownloadModelAsync(modelToDownload.Alias, progressReporter);
             modelToDownload.Status = ModelStatus.Downloaded;
+            DownloadProgress = 100;
             StatusMessage = $"Downloaded {modelToDownload.DisplayName}";
             await LoadModelsAsync();
         }
@@ -214,6 +229,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
         finally
         {
             IsLoading = false;
+            DownloadProgress = 0;
         }
     }
 

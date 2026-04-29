@@ -15,6 +15,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
@@ -155,5 +156,21 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+
+        <!-- Status Bar with Progress -->
+        <StackPanel Grid.Row="3" Margin="0,16,0,0" Spacing="8">
+            <!-- Progress Bar (shown only when downloading) -->
+            <ProgressBar 
+                Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.IsLoading}"
+                Height="4"/>
+            
+            <!-- Status Message -->
+            <TextBlock 
+                Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                FontSize="12"
+                TextWrapping="Wrap"/>
+        </StackPanel>
     </Grid>
 </Page>
