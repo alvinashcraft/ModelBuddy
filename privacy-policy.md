@@ -1,6 +1,6 @@
 # Privacy Policy — Model Buddy
 
-**Last updated:** March 15, 2026
+**Last updated:** April 29, 2026
 
 Alvin Ashcraft / Alvinitech ("we", "us", or "our") built Model Buddy as a free, open-source Windows desktop application. This Privacy Policy explains how Model Buddy handles — and, more importantly, does **not** handle — your data.
 
@@ -33,11 +33,12 @@ Chat conversations are held in memory only for the duration of your session. Whe
 
 ## Network Activity
 
-Model Buddy communicates **only** with a Foundry Local instance running on your local machine (typically at `http://127.0.0.1:5272`). This communication includes:
+Model Buddy communicates **only** with a Foundry Local instance running on your local machine. The local endpoint is auto-detected from Foundry Local service status or common localhost ports, and is typically similar to `http://127.0.0.1:5272`. This communication includes:
 
 - Checking whether the Foundry Local service is running
 - Retrieving the model catalog and model status
 - Downloading AI models from Microsoft's model distribution infrastructure (initiated through Foundry Local)
+- Removing downloaded models from the local Foundry cache when you request deletion
 - Sending chat messages to a locally loaded model and receiving responses
 
 Model Buddy does not contact any other servers, APIs, or endpoints. The app does not access the internet directly — all model downloads are managed by the Foundry Local service.

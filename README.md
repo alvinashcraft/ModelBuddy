@@ -11,7 +11,7 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 ## Features
 
 - **Chat** — Stream responses from on-device models with Markdown rendering, stop generation, and full conversation history
-- **Models** — Browse the Foundry Local catalog, download, delete, and select models for chat with size / RAM / device info
+- **Models** — Browse the Foundry Local catalog, download with progress, delete cached models, and select models for chat with size / RAM / device info
 - **Logs** — View application, Foundry Local, and Windows Event logs with level and source filtering
 - **Settings** — Theme selection, customizable system instructions, custom Foundry endpoint, and app info
 
@@ -24,6 +24,10 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 winget install Microsoft.FoundryLocal
 foundry --version
 ```
+
+See the [Foundry Local get started guide](https://learn.microsoft.com/azure/ai-foundry/foundry-local/get-started) for additional installation and setup details.
+
+Model Buddy auto-detects Foundry Local at startup. It checks a custom endpoint first if one is configured, then uses `foundry service status`, scans common local ports, and attempts to start the Foundry Local service if it is installed but not already running.
 
 ## Build
 
