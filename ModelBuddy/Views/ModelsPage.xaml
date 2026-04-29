@@ -15,6 +15,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
@@ -155,5 +156,44 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+
+        <!-- Status Bar with Progress -->
+        <Border
+            Grid.Row="3"
+            Margin="0,16,0,0"
+            Padding="12"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <FontIcon
+                    Grid.Column="0"
+                    Glyph="&#xE946;"
+                    FontSize="16"
+                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    VerticalAlignment="Top"/>
+
+                <StackPanel Grid.Column="1" Spacing="8">
+                    <ProgressBar
+                        Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                        IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
+                        Maximum="100"
+                        Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                        Height="4"/>
+
+                    <TextBlock
+                        Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                        FontSize="12"
+                        TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Page>

@@ -14,13 +14,13 @@ Manage and chat with on-device AI models powered by Foundry Local.
 
 ## Description
 
-Note: Model Buddy is fully self-contained — the .NET runtime and all dependencies are bundled in the app. No additional software installation is required. Connect to local AI in Foundry Local to manage and chat with AI models.
+Note: Model Buddy is fully self-contained — the .NET runtime and app dependencies are bundled. Microsoft Foundry Local is required for model management and chat functionality.
 
 Model Buddy is a desktop companion for Windows that makes it easy to discover, download, and chat with on-device AI models through Microsoft Foundry Local — no cloud required.
 
-Browse the full Foundry Local model catalog to see what's available, check file sizes and RAM requirements, and download models with a single click. Once a model is downloaded, start a streaming chat conversation right inside the app with full Markdown rendering.
+Browse the full Foundry Local model catalog to see what's available, check file sizes and RAM requirements, and download models with visible progress feedback. Once a model is downloaded, start a streaming chat conversation right inside the app with full Markdown rendering.
 
-Model Buddy connects to the Foundry Local inference service automatically, but you can point it at a custom endpoint if needed. Built-in content safety guidelines are always applied to every conversation to help keep interactions responsible and respectful.
+Model Buddy connects to the Foundry Local inference service automatically, can start the local service when needed, and can be pointed at a custom endpoint if required. Built-in content safety guidelines are always applied to every conversation to help keep interactions responsible and respectful.
 
 The Settings page lets you personalize the experience: choose a light, dark, or system-matched theme; customize the system instructions sent to the model; and override the Foundry Local endpoint. Application, Foundry Local, and Windows Event logs are available on the Logs page for troubleshooting.
 
@@ -28,7 +28,9 @@ Model Buddy is free and open source, built with WinUI 3 and .NET 10.
 
 ## What's New
 
-- Initial release
+- Improved Foundry Local startup detection and reconnect behavior
+- Added visible model download/delete progress feedback
+- Improved cached model deletion through Foundry Local cache removal
 - Chat with on-device AI models using streaming responses and Markdown rendering
 - Browse, download, and manage models from the Foundry Local catalog
 - Settings page with theme selection, customizable system instructions, and custom endpoint
@@ -37,7 +39,7 @@ Model Buddy is free and open source, built with WinUI 3 and .NET 10.
 ## Features
 
 - Chat with on-device AI models in real time
-- Browse and download from the full model catalog
+- Browse, download, and remove cached models from the full model catalog
 - Light, dark, and system theme with Mica backdrop
 - View and filter application and Foundry Local logs
 
@@ -53,19 +55,19 @@ Model Buddy does not collect, transmit, or store any personal data. All AI infer
 
 ### Prerequisites
 
-Model Buddy requires **Microsoft Foundry Local** to be installed. Without it, the app will launch but display "Not connected" in the status bar. To install:
+Model Buddy requires **Microsoft Foundry Local** to be installed. Without it, the app will launch but display "Not connected" in the status bar with a getting-started link. To install:
 
 ```
 winget install Microsoft.FoundryLocal
 ```
 
-After installation, run `foundry --version` to verify. The Foundry Local service starts on-demand when the app connects.
+After installation, run `foundry --version` to verify. The Foundry Local service starts on-demand when the app connects. The app also checks `foundry service status` and common local ports to find the active endpoint.
 
 ### Testing steps
 
 1. **Launch the app.** It opens on the Models page and attempts to connect to Foundry Local automatically. If connected, a green dot and "Connected" appear in the status bar. If Foundry Local is not installed, the status bar shows "Not connected" with Reconnect and getting-started links.
 
-2. **Models page.** Once connected, the full catalog loads. Filter by status (Available / Downloaded / Loaded) and search by name. To download a model, click the download button — this may take several minutes depending on model size and network speed. After downloading, the model can be selected for chat.
+2. **Models page.** Once connected, the full catalog loads. Search by name, provider, task, or alias. To download a model, click the Download button — this may take several minutes depending on model size and network speed, and progress is shown in the highlighted status area. Downloaded models can be selected for chat or removed from the local cache with Delete.
 
 3. **Chat page.** Select a downloaded model from the dropdown and type a message. The assistant streams its response in real time with Markdown rendering. "Stop" cancels generation mid-stream. "Clear chat" resets the conversation.
 

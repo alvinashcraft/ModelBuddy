@@ -44,11 +44,13 @@ foundry --version
 
 ### REST API Approach (Recommended)
 
-Model Buddy uses the Foundry Local REST API directly instead of the SDK. This approach:
+Model Buddy primarily uses the Foundry Local REST API directly instead of the SDK. This approach:
 - Provides full model metadata (file size, RAM requirements, device type, max tokens)
 - Has no dependency on the Foundry Local SDK NuGet packages
-- Is more reliable for auto-discovery via port scanning
+- Works with auto-discovery via CLI-reported service status and port scanning
 - Mirrors the battle-tested [FoundryWebUI](https://github.com/itopstalk/FoundryWebUI) implementation
+
+Exception: cached model deletion uses the Foundry Local CLI first (`foundry cache remove <model> --yes`) because the REST delete endpoint is less reliable across hardware/device variants. The REST delete endpoint remains a fallback.
 
 **Key REST Endpoints:**
 
@@ -59,18 +61,25 @@ Model Buddy uses the Foundry Local REST API directly instead of the SDK. This ap
 | `GET` | `/openai/models` | List downloaded models (string array) |
 | `GET` | `/openai/loadedmodels` | List models loaded in memory (string array) |
 | `POST` | `/openai/download` | Download model with progress streaming |
-| `DELETE` | `/openai/models/{name}` | Remove model from cache |
+| `DELETE` | `/openai/models/{name}` | Remove model from cache (fallback; prefer CLI cache removal) |
 | `GET` | `/openai/load/{name}` | Load model into memory |
 | `POST` | `/v1/chat/completions` | Chat completion (streaming supported) |
 
 **Auto-Discovery:**
 
-The service scans common ports (5273, 5272, 5274, 5275, 5276) to find Foundry Local:
+The service detects Foundry Local in this order:
+
+1. Try the user-configured custom endpoint, if set.
+2. Run `foundry service status` and parse the reported local endpoint.
+3. Scan common ports (5272, 5273, 5274, 5275, 5276).
+4. If no service is running, launch `foundry service start` and poll until the endpoint responds.
+
+Port scanning example:
 
 ```csharp
 foreach (var port in PortsToScan)
 {
-    var endpoint = $"http://localhost:{port}";
+    var endpoint = $"http://127.0.0.1:{port}";
     var response = await _httpClient.GetAsync($"{endpoint}/openai/status");
     if (response.IsSuccessStatusCode)
     {
@@ -205,7 +214,9 @@ foundry model download <alias>      # Download without running
 foundry model run <alias>           # Download, load, and start interactive chat
 foundry model info <alias>          # Show model details (size, license, variants)
 foundry service status              # Check if the local inference service is running
+foundry service start               # Start the local inference service
 foundry cache list                  # List cached model files
+foundry cache remove <model> --yes  # Remove cached model files without an interactive prompt
 ```
 
 ### Reference Implementation: FoundryWebUI
@@ -219,7 +230,7 @@ For feature and UI design reference, see [FoundryWebUI](https://github.com/itops
 | **Sortable Model Table** | Click column headers to sort by name, status, size, RAM, device type |
 | **Can Run Indicator** | Estimate RAM requirements (~1.2× file size) and show whether system can run model |
 | **Connection Status** | Green/red indicator with endpoint display and reconnect button |
-| **Auto-Discovery** | Detect Foundry Local endpoint via port scanning |
+| **Auto-Discovery** | Detect Foundry Local endpoint via service status, port scanning, and on-demand service start |
 | **Logs Page** | View application logs with filtering and search |
 
 ## MVVM Pattern & Dependency Injection

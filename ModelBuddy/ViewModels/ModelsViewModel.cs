@@ -49,6 +49,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
     private async Task LoadModelsOnConnectedAsync()
     {
         IsLoading = true;
+        IsProgressIndeterminate = true;
         StatusMessage = "Loading models...";
         try
         {
@@ -62,6 +63,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
         finally
         {
             IsLoading = false;
+            IsProgressIndeterminate = false;
         }
     }
 
@@ -139,6 +141,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
         }
 
         IsLoading = true;
+        IsProgressIndeterminate = true;
         StatusMessage = "Loading models...";
 
         try
@@ -160,6 +163,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
         finally
         {
             IsLoading = false;
+            IsProgressIndeterminate = false;
         }
     }
 
@@ -184,6 +188,18 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
     }
 
     /// <summary>
+    /// Gets or sets the current download progress (0-100).
+    /// </summary>
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the progress bar should show indeterminate progress.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isProgressIndeterminate;
+
+    /// <summary>
     /// Downloads the selected model.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanDownloadModel))]
@@ -196,13 +212,24 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
 
         var modelToDownload = SelectedModel;
         IsLoading = true;
+        IsProgressIndeterminate = false;
+        DownloadProgress = 0;
         StatusMessage = $"Downloading {modelToDownload.DisplayName}...";
         modelToDownload.Status = ModelStatus.Downloading;
 
         try
         {
-            await _foundryService.DownloadModelAsync(modelToDownload.Alias);
+            // Create a progress reporter that updates status message with percentage
+            var progressReporter = new Progress<double>(percent =>
+            {
+                var boundedPercent = Math.Clamp(percent, 0, 100);
+                DownloadProgress = boundedPercent;
+                StatusMessage = $"Downloading {modelToDownload.DisplayName}... {boundedPercent:F1}%";
+            });
+
+            await _foundryService.DownloadModelAsync(modelToDownload.Alias, progressReporter);
             modelToDownload.Status = ModelStatus.Downloaded;
+            DownloadProgress = 100;
             StatusMessage = $"Downloaded {modelToDownload.DisplayName}";
             await LoadModelsAsync();
         }
@@ -214,6 +241,8 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
         finally
         {
             IsLoading = false;
+            IsProgressIndeterminate = false;
+            DownloadProgress = 0;
         }
     }
 
@@ -235,6 +264,8 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
 
         var modelToDelete = SelectedModel;
         IsLoading = true;
+        IsProgressIndeterminate = true;
+        DownloadProgress = 0;
         StatusMessage = $"Deleting {modelToDelete.DisplayName}...";
 
         try
@@ -250,6 +281,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
         finally
         {
             IsLoading = false;
+            IsProgressIndeterminate = false;
         }
     }
 
