@@ -199,7 +199,7 @@ public partial class ChatViewModel : ObservableRecipient, IRecipient<ConnectionS
         AvailableModels.Clear();
 
         var models = await _foundryService.GetAvailableModelsAsync();
-        foreach (var model in models.Where(m => m.Task.Contains("chat", StringComparison.OrdinalIgnoreCase) && 
+        foreach (var model in models.Where(m => m.IsChatCapable &&
                                                 (m.Status == ModelStatus.Downloaded || m.Status == ModelStatus.Loaded)))
         {
             AvailableModels.Add(model);

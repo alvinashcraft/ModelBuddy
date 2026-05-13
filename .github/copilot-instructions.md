@@ -69,6 +69,8 @@ Exception: cached model deletion uses the Foundry Local CLI first (`foundry cach
 | `DELETE` | `/openai/models/{name}` | Remove model from cache (fallback; prefer CLI cache removal) |
 | `GET` | `/openai/load/{name}` | Load model into memory |
 | `POST` | `/v1/chat/completions` | Chat completion (streaming supported) |
+| `POST` | `/v1/embeddings` | Generate text embeddings (Foundry Local v1.1+, e.g. `qwen3-0.6b-embedding`) |
+| `POST` | `/v1/responses` | OpenAI Responses API for tool calling, structured agentic, and multimodal input (Foundry Local v1.1+) |
 
 **Auto-Discovery:**
 
@@ -117,7 +119,7 @@ if (model.TryGetProperty("runtime", out var rt) && rt.TryGetProperty("deviceType
 
 ### C# SDK Usage (Alternative)
 
-If you prefer the SDK approach, use v0.8.0+ with the object-oriented API:
+If you prefer the SDK approach, use v1.1.0+ with the object-oriented API. The v1.1 release adds `netstandard2.0` / `net8.0` targets (broader .NET compatibility), live audio transcription, embedding clients, and the WebGPU execution provider as an on-demand plug-in:
 
 ```csharp
 using Microsoft.AI.Foundry.Local;
@@ -176,7 +178,7 @@ var chatClient = await model.GetChatClientAsync();
 await model.UnloadAsync();
 ```
 
-### Key SDK Patterns (v0.8.0+)
+### Key SDK Patterns (v1.1.0+)
 
 | Operation | Code |
 |-----------|------|
@@ -192,6 +194,10 @@ await model.UnloadAsync();
 | Load model | `await model.LoadAsync();` |
 | Unload model | `await model.UnloadAsync();` |
 | Get chat client | `var chatClient = await model.GetChatClientAsync();` |
+| Get embedding client (v1.1+) | `var embeddingClient = await model.GetEmbeddingClientAsync();` |
+| Get audio client (v1.1+) | `var audioClient = await model.GetAudioClientAsync();` |
+| Discover execution providers (v1.1+) | `var eps = await mgr.DiscoverEpsAsync();` |
+| Download & register EPs (v1.1+) | `await mgr.DownloadAndRegisterEpsAsync(progress);` |
 | Start web server | `await mgr.StartWebServerAsync();` |
 | Stop web server | `await mgr.StopWebServerAsync();` |
 

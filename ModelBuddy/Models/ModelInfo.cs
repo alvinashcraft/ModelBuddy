@@ -61,6 +61,28 @@ public class LocalModel
     public bool CanRun { get; set; }
 
     /// <summary>
+    /// Gets the high-level category of the model derived from <see cref="Task"/>.
+    /// </summary>
+    public ModelCategory Category => ClassifyTask(Task);
+
+    /// <summary>
+    /// Gets a short human-friendly label for <see cref="Category"/> (e.g., "Chat", "Embeddings").
+    /// </summary>
+    public string CategoryLabel => Category switch
+    {
+        ModelCategory.ChatCompletion => "Chat",
+        ModelCategory.Vision => "Vision",
+        ModelCategory.Embeddings => "Embeddings",
+        ModelCategory.Transcription => "Transcription",
+        _ => string.IsNullOrWhiteSpace(Task) ? "Other" : Task,
+    };
+
+    /// <summary>
+    /// Indicates whether this model can be used for chat (chat-completion or vision/multimodal).
+    /// </summary>
+    public bool IsChatCapable => Category is ModelCategory.ChatCompletion or ModelCategory.Vision;
+
+    /// <summary>
     /// Gets the formatted size string (e.g., "2.5 GB").
     /// </summary>
     public string FormattedSize => FormatBytes(SizeInBytes);
@@ -85,6 +107,59 @@ public class LocalModel
 
         return $"{bytes / 1024.0:F1} KB";
     }
+
+    private static ModelCategory ClassifyTask(string? task)
+    {
+        if (string.IsNullOrWhiteSpace(task))
+        {
+            return ModelCategory.ChatCompletion;
+        }
+
+        var t = task.ToLowerInvariant();
+
+        if (t.Contains("embed"))
+        {
+            return ModelCategory.Embeddings;
+        }
+
+        if (t.Contains("speech") || t.Contains("transcription") || t.Contains("asr") || t.Contains("audio"))
+        {
+            return ModelCategory.Transcription;
+        }
+
+        if (t.Contains("vision") || t.Contains("image") || t.Contains("multimodal") || t.Contains("vqa"))
+        {
+            return ModelCategory.Vision;
+        }
+
+        if (t.Contains("chat") || t.Contains("text-generation") || t.Contains("text2text"))
+        {
+            return ModelCategory.ChatCompletion;
+        }
+
+        return ModelCategory.Other;
+    }
+}
+
+/// <summary>
+/// High-level categorization of a Foundry Local model based on its task.
+/// </summary>
+public enum ModelCategory
+{
+    /// <summary>Chat-completion / text-generation models.</summary>
+    ChatCompletion,
+
+    /// <summary>Multimodal vision-language models (e.g., Qwen 3.5 VL).</summary>
+    Vision,
+
+    /// <summary>Text embedding models (e.g., qwen3-0.6b-embedding).</summary>
+    Embeddings,
+
+    /// <summary>Speech-to-text / live transcription models (e.g., Nemotron ASR).</summary>
+    Transcription,
+
+    /// <summary>Any other or unrecognized task.</summary>
+    Other,
 }
 
 /// <summary>

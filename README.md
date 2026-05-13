@@ -11,14 +11,14 @@ A WinUI 3 desktop companion for managing and chatting with on-device AI models v
 ## Features
 
 - **Chat** — Stream responses from on-device models with Markdown rendering, stop generation, and full conversation history
-- **Models** — Browse the Foundry Local catalog, download with progress, delete cached models, and select models for chat with size / RAM / device info
+- **Models** — Browse the Foundry Local catalog, download with progress, delete cached models, and select models for chat with size / RAM / device info. Models are tagged by category (Chat, Vision, Embeddings, Transcription) so the chat picker only lists chat-capable models.
 - **Logs** — View application, Foundry Local, and Windows Event logs with level and source filtering
 - **Settings** — Theme selection, customizable system instructions, custom Foundry endpoint, and app info
 
 ## Prerequisites
 
 - Windows 10 (version 2004) or later
-- [Foundry Local](https://github.com/microsoft/Foundry-Local) runtime:
+- [Foundry Local](https://github.com/microsoft/Foundry-Local) runtime (v1.1.0 or later recommended):
 
 ```powershell
 winget install Microsoft.FoundryLocal
