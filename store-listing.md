@@ -28,13 +28,12 @@ Model Buddy is free and open source, built with WinUI 3 and .NET 10.
 
 ## What's New
 
-- Improved Foundry Local startup detection and reconnect behavior
-- Added visible model download/delete progress feedback
-- Improved cached model deletion through Foundry Local cache removal
-- Chat with on-device AI models using streaming responses and Markdown rendering
-- Browse, download, and manage models from the Foundry Local catalog
-- Settings page with theme selection, customizable system instructions, and custom endpoint
-- Application and Foundry Local log viewer with filtering
+- Updated for Foundry Local 1.1 model catalog changes
+- Added model category labels for Chat, Vision, Embeddings, and Transcription models
+- Chat model pickers now focus on chat-capable downloaded models
+- Improved model list search to include model category labels
+- Improved category badge readability in dark mode
+- Includes the previous startup detection, download progress, and cached model deletion improvements
 
 ## Features
 
