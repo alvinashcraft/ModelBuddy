@@ -115,9 +115,15 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold"/>
                             <TextBlock Text="{x:Bind Provider}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12"/>
-                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" Margin="0,4,0,0"
+                            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="6,2"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,4,0,0"
                                     ToolTipService.ToolTip="{x:Bind Task}">
-                                <TextBlock Text="{x:Bind CategoryLabel}" FontSize="11" Foreground="White"/>
+                                <TextBlock Text="{x:Bind CategoryLabel}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             </Border>
                         </StackPanel>
 
