@@ -177,7 +177,8 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
                 m.DisplayName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                 m.Alias.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
                 m.Provider.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                m.Task.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                m.Task.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                m.CategoryLabel.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
         foreach (var model in filtered)
         {
@@ -309,7 +310,7 @@ public partial class ModelsViewModel : ObservableRecipient, IRecipient<Connectio
     private bool CanSelectForChat()
     {
         return SelectedModel is not null &&
-               (SelectedModel.Task.Contains("chat", StringComparison.OrdinalIgnoreCase)) &&
+               SelectedModel.IsChatCapable &&
                (SelectedModel.Status == ModelStatus.Downloaded || SelectedModel.Status == ModelStatus.Loaded);
     }
 
