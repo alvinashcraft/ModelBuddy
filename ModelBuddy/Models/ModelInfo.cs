@@ -112,7 +112,7 @@ public class LocalModel
     {
         if (string.IsNullOrWhiteSpace(task))
         {
-            return ModelCategory.ChatCompletion;
+            return ModelCategory.Other;
         }
 
         var t = task.ToLowerInvariant();
